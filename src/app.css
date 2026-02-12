@@ -1,0 +1,165 @@
+@import 'tailwindcss';
+
+@theme {
+	/* Warm sunset amber scale */
+	--color-sunset-amber-50: #fffbeb;
+	--color-sunset-amber-100: #fef3c7;
+	--color-sunset-amber-200: #fde68a;
+	--color-sunset-amber-300: #fcd34d;
+	--color-sunset-amber-400: #fbbf24;
+	--color-sunset-amber-500: #f59e0b;
+
+	/* Secondary warm orange */
+	--color-sunset-orange-400: #fb923c;
+	--color-sunset-orange-500: #f97316;
+
+	/* Cool contrast navy */
+	--color-sunset-navy-700: #1e3a5f;
+	--color-sunset-navy-800: #172e4a;
+	--color-sunset-navy-900: #0f1f35;
+
+	/* Reflection transition intermediates */
+	--color-sunset-reflect-warm: #e0a870;
+	--color-sunset-reflect-cool: #8fb8cc;
+
+	/* Lighter blues/slate for visible text on dark bg */
+	--color-sunset-blue-300: #7dd3fc;
+	--color-sunset-blue-400: #60a5fa;
+	--color-sunset-slate-400: #94a3b8;
+
+	/* Warm neutrals replacing pure gray */
+	--color-warm-50: #fafaf8;
+	--color-warm-100: #f5f5f0;
+	--color-warm-200: #e8e6df;
+	--color-warm-300: #d6d3c9;
+	--color-warm-400: #a8a49a;
+	--color-warm-500: #7a776e;
+	--color-warm-600: #5c5a52;
+	--color-warm-700: #43413b;
+	--color-warm-800: #2d2c27;
+
+	/* Fonts */
+	--font-sans: 'Source Sans 3', system-ui, sans-serif;
+	--font-serif: 'Newsreader', Georgia, serif;
+	--font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+	/* Animations */
+	--ease-contemplative: cubic-bezier(0.25, 0.1, 0.25, 1.0);
+
+	--animate-glow: glow 4s var(--ease-contemplative) infinite;
+
+	@keyframes glow {
+		0%, 100% { opacity: 0.6; }
+		50% { opacity: 1; }
+	}
+}
+
+:root {
+	--color-theme-bg: #fcfbf7;
+	--color-theme-surface: #ffffff;
+	--color-theme-text: var(--color-warm-600);
+	--color-theme-muted: var(--color-warm-500);
+	--color-theme-subtle: var(--color-warm-400);
+	--color-theme-heading: #111111;
+	--color-theme-border: var(--color-warm-200);
+	--color-theme-hover: rgba(251, 191, 36, 0.1);
+	--color-theme-divider: var(--color-sunset-amber-200);
+	--color-theme-selection: var(--color-sunset-amber-100);
+}
+
+html[data-theme='dark'] {
+	--color-theme-bg: #08111d;
+	--color-theme-surface: #101c2d;
+	--color-theme-text: #d6d3c9;
+	--color-theme-muted: #b8b3a7;
+	--color-theme-subtle: #989387;
+	--color-theme-heading: #f8fafc;
+	--color-theme-border: rgba(148, 163, 184, 0.22);
+	--color-theme-hover: rgba(251, 191, 36, 0.08);
+	--color-theme-divider: rgba(252, 211, 77, 0.28);
+	--color-theme-selection: rgba(251, 191, 36, 0.2);
+	color-scheme: dark;
+}
+
+/* Base styles */
+html {
+	@apply motion-safe:scroll-smooth;
+	background-color: var(--color-theme-bg);
+	color-scheme: light;
+}
+
+body {
+	@apply py-12 sm:py-24 md:py-32 leading-relaxed;
+	background:
+		radial-gradient(circle at top, rgba(251, 191, 36, 0.06), transparent 35%),
+		var(--color-theme-bg);
+	color: var(--color-theme-text);
+	transition: background-color 0.25s, color 0.25s;
+}
+
+::selection {
+	background: var(--color-theme-selection);
+}
+
+hr {
+	border: none;
+	height: 1px;
+	background: linear-gradient(to right, transparent, var(--color-theme-divider), transparent);
+}
+
+/* Component classes */
+.link {
+	@apply underline underline-offset-[3px] decoration-sunset-amber-400;
+	color: var(--color-theme-heading);
+	transition: color 0.2s, text-decoration-color 0.2s;
+}
+
+.link:hover {
+	color: var(--color-theme-heading);
+	text-decoration-color: var(--color-sunset-amber-500);
+}
+
+.layout-md {
+	@apply max-w-screen-md mx-auto px-4 sm:px-6;
+}
+
+.heading2 {
+	@apply text-xl font-semibold mb-6;
+	color: var(--color-theme-heading);
+}
+
+.text-black {
+	color: var(--color-theme-heading) !important;
+}
+
+.text-neutral-700,
+.text-warm-600 {
+	color: var(--color-theme-text) !important;
+}
+
+.text-warm-500 {
+	color: var(--color-theme-muted) !important;
+}
+
+.text-warm-400,
+.text-warm-200,
+.text-warm-50 {
+	color: var(--color-theme-subtle) !important;
+}
+
+.border-warm-100 {
+	border-color: var(--color-theme-border) !important;
+}
+
+/* Scroll reveal animations */
+@media (prefers-reduced-motion: no-preference) {
+	.reveal {
+		opacity: 0;
+		transform: translateY(12px);
+		transition: opacity 0.8s var(--ease-contemplative), transform 0.8s var(--ease-contemplative);
+	}
+	.reveal.in-view {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
