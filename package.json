@@ -1,0 +1,38 @@
+{
+  "name": "mlsimon734.github.io",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "ascii:convert": "scripts/convert-ascii.sh"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "^3.0.0",
+    "@sveltejs/kit": "^2.59.1",
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "oxlint": "^1.63.0",
+    "prettier": "^3.8.3",
+    "prettier-plugin-svelte": "^3.5.1",
+    "prettier-plugin-tailwindcss": "^0.8.0",
+    "svelte": "^5.55.5",
+    "svelte-check": "^4.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^6.0.0",
+    "vite": "^8.0.0"
+  },
+  "dependencies": {
+    "@icons-pack/svelte-simple-icons": "^7.2.0",
+    "@thi.ng/pixel": "^7.5.23",
+    "@thi.ng/pixel-dither": "^1.1.191",
+    "lucide-svelte": "^1.0.0"
+  }
+}

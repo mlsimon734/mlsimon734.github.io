@@ -1,0 +1,29 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-yaml
+      - id: check-json
+        exclude: \.vscode/
+
+  - repo: local
+    hooks:
+      - id: oxlint
+        name: oxlint (fix)
+        language: system
+        entry: bunx oxlint --fix
+        files: \.(js|jsx|ts|tsx|svelte)$
+        pass_filenames: true
+
+      - id: prettier
+        name: prettier (write)
+        language: system
+        entry: bunx prettier --write
+        files: \.(js|jsx|ts|tsx|svelte|json|jsonc|css|md|ya?ml|html)$
+        exclude: ^(\.svelte-kit|build|node_modules|bun\.lock)
+        pass_filenames: true

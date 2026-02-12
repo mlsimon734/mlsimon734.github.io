@@ -1,0 +1,7 @@
+.svelte-kit
+build
+node_modules
+bun.lock
+*.min.js
+*.min.css
+static
