@@ -1,0 +1,74 @@
+<script lang="ts">
+	import { ArrowUpRight } from 'lucide-svelte';
+	import AsciiDivider from '$lib/components/AsciiDivider.svelte';
+	import { inview } from '$lib/actions/inview';
+
+	type Essay = {
+		title: string;
+		href: string;
+		external?: boolean;
+		date: string;
+		blurb: string;
+	};
+
+	// TODO: replace placeholder with real essays as you write them.
+	const essays: Essay[] = [
+		{
+			title: 'Lobsters first: on Stross, moltenet, and fiction-becoming-reality',
+			href: 'https://github.com/mlsimon734',
+			external: true,
+			date: 'forthcoming',
+			blurb:
+				'Charles Stross predicted that the first uploaded consciousnesses would be lobsters — small brains, low neuron count. Recently, someone built moltenet, a social network for language model agents as crabs and lobsters. A note on the moments when speculative fiction quietly becomes ambient.'
+		}
+	];
+</script>
+
+<svelte:head>
+	<title>Writing · Michael Simon</title>
+</svelte:head>
+
+<div class="layout-md text-lg">
+	<section class="reveal" use:inview>
+		<h1 class="heading2">
+			<span class="text-sunset-amber-300 font-mono text-base font-normal mr-2">//</span>writing
+		</h1>
+		<p class="text-warm-500 mb-8">
+			Notes on research, software, and things I’m thinking about. Sparse and slow on purpose.
+		</p>
+
+		<ul class="space-y-2">
+			{#each essays as essay}
+				<li>
+					<a
+						href={essay.href}
+						target={essay.external ? '_blank' : undefined}
+						rel={essay.external ? 'noopener noreferrer' : undefined}
+						class="work-link"
+					>
+						<span class="work-name">
+							{essay.title}
+							{#if essay.external}<ArrowUpRight size={18} class="work-arrow" />{/if}
+						</span>
+						<span class="work-desc">
+							{essay.blurb}
+							<span class="essay-date">— {essay.date}</span>
+						</span>
+					</a>
+				</li>
+			{/each}
+		</ul>
+	</section>
+
+	<AsciiDivider />
+
+	<p class="font-mono text-sm text-center mt-10 text-warm-400">// more coming as I write them</p>
+</div>
+
+<style>
+	.essay-date {
+		font-family: var(--font-mono);
+		font-size: 0.8125rem;
+		color: var(--color-sunset-amber-500);
+	}
+</style>
