@@ -25,6 +25,6 @@
     "@icons-pack/svelte-simple-icons": "^7.2.0",
     "@thi.ng/pixel": "^7.5.23",
     "@thi.ng/pixel-dither": "^1.1.191",
-    "lucide-svelte": "^0.560.0"
+    "lucide-svelte": "^1.0.0"
   }
 }
