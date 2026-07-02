@@ -1,6 +1,7 @@
 <script lang="ts">
   import { slide } from "svelte/transition";
   import AsciiDivider from "$lib/components/AsciiDivider.svelte";
+  import Seo from "$lib/components/Seo.svelte";
   import { inview } from "$lib/actions/inview";
 
   type Entry = {
@@ -201,11 +202,15 @@
   ];
 </script>
 
-<svelte:head>
-  <title>Experience · Michael Simon</title>
-</svelte:head>
+<Seo
+  title="Experience"
+  path="/experience"
+  description="Education, experience, publications, awards, and teaching by Michael Simon."
+/>
 
 <div class="layout-md text-lg">
+  <h1 class="sr-only">Experience</h1>
+
   <section class="reveal" use:inview>
     <h2 class="heading2">
       <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>education

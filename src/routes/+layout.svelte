@@ -7,11 +7,6 @@
   let { children } = $props();
 </script>
 
-<svelte:head>
-  <title>Michael Simon</title>
-  <meta name="description" content="Personal website of Michael Simon" />
-</svelte:head>
-
 <Header />
 
 <main class="mt-6 sm:mt-8">

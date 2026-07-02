@@ -1,11 +1,14 @@
 <script lang="ts">
   import { page } from "$app/state";
   import AsciiHorizon from "$lib/components/AsciiHorizon.svelte";
+  import Seo from "$lib/components/Seo.svelte";
 </script>
 
-<svelte:head>
-  <title>{page.status} · Michael Simon</title>
-</svelte:head>
+<Seo
+  title={`${page.status}`}
+  noindex
+  description="The page you were looking for was not found on Michael Simon's website."
+/>
 
 <div class="layout-md text-lg">
   <div class="error-horizon" aria-hidden="true">

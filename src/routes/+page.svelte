@@ -8,6 +8,7 @@
   import OrgChip from "$lib/components/OrgChip.svelte";
   import ConfluentLogo from "$lib/components/logos/ConfluentLogo.svelte";
   import ExcavaiteLogo from "$lib/components/logos/ExcavaiteLogo.svelte";
+  import Seo from "$lib/components/Seo.svelte";
   import { inview } from "$lib/actions/inview";
 
   const orgColor = {
@@ -66,7 +67,11 @@
   ];
 </script>
 
+<Seo type="profile" />
+
 <div class="layout-md text-lg">
+  <h1 class="sr-only">Michael Simon</h1>
+
   <header class="home-header" in:fly={{ y: 20, duration: 800, delay: 200 }}>
     <div class="home-header-text">
       <p class="home-tagline">
@@ -247,16 +252,6 @@
     object-fit: cover;
     border: 1px solid var(--color-theme-border);
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
-  }
-
-  .aside {
-    color: var(--color-theme-subtle);
-  }
-
-  .aside.paper {
-    font-family: var(--font-mono);
-    font-size: 0.875rem;
-    color: var(--color-sunset-amber-500);
   }
 
   @media (max-width: 640px) {

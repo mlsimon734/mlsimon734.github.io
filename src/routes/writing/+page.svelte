@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ArrowUpRight } from "lucide-svelte";
+  import Seo from "$lib/components/Seo.svelte";
   import { inview } from "$lib/actions/inview";
 
   type Essay = {
@@ -23,11 +24,15 @@
   ];
 </script>
 
-<svelte:head>
-  <title>Writing · Michael Simon</title>
-</svelte:head>
+<Seo
+  title="Writing"
+  path="/writing"
+  description="Notes by Michael Simon on research, software, and theories of knowledge."
+/>
 
 <div class="layout-md text-lg">
+  <h1 class="sr-only">Writing</h1>
+
   <section class="reveal" use:inview>
     <p class="text-warm-500 mb-8">Notes on research, software, and theory of knowledge.</p>
 
