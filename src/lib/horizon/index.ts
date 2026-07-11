@@ -53,7 +53,7 @@ function foregroundWaterChar(
   const centerSy = y * 4 + 2;
   const waterT = (centerSy - subHorizonRow) / (config.subHeight - subHorizonRow);
 
-  if (waterT < 0.62) return fallbackChar;
+  if (waterT < 0.52) return fallbackChar;
 
   const sample = sampleOceanSurface(
     centerSx,
@@ -66,20 +66,32 @@ function foregroundWaterChar(
   const slope = sample.slopeX;
   const steepness = Math.abs(slope);
 
-  if (sample.crest > 0.5) {
-    return steepness > 0.013 ? (slope > 0 ? "/" : "\\") : "~";
+  if (sample.glitter > 0.84) {
+    return "'";
   }
-  if (sample.crest > 0.18) {
-    return steepness > 0.01 ? (slope > 0 ? "/" : "\\") : "-";
+  // Steepness thresholds sit on the measured |slopeX| distribution
+  // (q25 ≈ 0.1, median ≈ 0.25, q75 ≈ 0.45) so each band gets a real share.
+  if (sample.crest > 0.55) {
+    // Slashes only on the very steepest crest faces — everything gentler
+    // stays in the horizontal-flow family so the surface reads as current.
+    if (steepness > 0.46) return slope > 0 ? "/" : "\\";
+    return sample.glitter > 0.5 ? "≈" : "~";
+  }
+  if (sample.crest > 0.2) {
+    if (steepness < 0.13) return "–";
+    return sample.glitter > 0.55 ? "≈" : "~";
   }
   if (sample.crest < -0.45) {
-    return "_";
+    // Em dashes join across cells into travelling shallow-water lines
+    return waterT > 0.6 ? "—" : "_";
   }
   if (sample.crest < -0.12) {
-    return steepness > 0.012 ? "." : "=";
+    // Flat trough spines become flowing contour lines
+    if (steepness < 0.12) return waterT > 0.55 ? "—" : "=";
+    return ".";
   }
 
-  return steepness > 0.011 ? ":" : ".";
+  return steepness > 0.25 ? ":" : sample.glitter < 0.42 ? "." : ",";
 }
 
 export function generateHorizon(
@@ -130,10 +142,9 @@ export function generateHorizon(
 
       if (zone === "star") {
         char = STAR_CHARS[(x * 7 + y * 13) % STAR_CHARS.length];
-      } else if (zone === "water") {
+      } else if (zone === "water" || zone === "water-far") {
         char = foregroundWaterChar(x, y, config, params, waveParams, waterBraille[y][x].char);
       } else if (
-        zone === "water-far" ||
         zone === "water-reflect" ||
         zone === "water-reflect-warm" ||
         zone === "water-reflect-cool"
@@ -141,9 +152,11 @@ export function generateHorizon(
         char = waterBraille[y][x].char;
       } else if (zone === "sky") {
         char = " ";
-      } else if (zone === "sun-core" || zone === "sun") {
+      } else if (zone === "sun-core" || zone === "sun" || zone === "moon-core" || zone === "moon") {
         char = orderedBraille[y][x].char;
-        if (char === " ") char = zone === "sun-core" ? "⣿" : "·";
+        if (char === " " && (zone === "sun-core" || zone === "sun")) {
+          char = zone === "sun-core" ? "⣿" : "·";
+        }
       } else if (zone === "horizon") {
         char = x % 3 === 0 ? "⠒" : "⠤";
       } else {
@@ -166,7 +179,11 @@ export function generateHorizon(
     grid.push(row);
   }
 
-  // Bilateral symmetry mirroring for sun disc and glow
+  // Bilateral symmetry mirroring for sun disc and glow.
+  // Skipped at night: the moon's phase crescent is deliberately asymmetric.
+  if (params.isNight) {
+    return grid;
+  }
   const charHorizonRow = Math.floor(config.height * 0.65);
   const sunMirrorTop = Math.max(0, sunCenterCy - sunRadiusCy * 2);
   const sunMirrorBottom = Math.min(charHorizonRow, sunCenterCy + sunRadiusCy + 1);

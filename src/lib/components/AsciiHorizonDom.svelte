@@ -8,7 +8,9 @@
     type WaveParams,
     type SkyParams,
   } from "$lib/horizon";
-  import { encodeRuns } from "$lib/horizon/render";
+  import { computeWorldParams } from "$lib/horizon/world";
+  import { renderBackgroundPixels } from "$lib/horizon/background";
+  import { encodeRuns, resolveZonePalette } from "$lib/horizon/render";
 
   const TARGET_FPS = 12;
   const FRAME_INTERVAL_MS = 1000 / TARGET_FPS;
@@ -22,6 +24,12 @@
   } = $props();
 
   let container: HTMLDivElement | undefined = $state();
+  let artBlock: HTMLDivElement | undefined = $state();
+  let naturalW = $state(0);
+  let naturalH = $state(0);
+  let containerW = $state(0);
+  let themeVersion = $state(0);
+  let bgUrl = $state("");
   let isDesktop = $state(false);
   let reducedMotion = $state(false);
   let inViewport = $state(true);
@@ -34,6 +42,15 @@
   const grid = $derived(generateHorizon(now, config, waterTime, waveParams, skyParams));
   const spans = $derived(
     encodeRuns(grid) as { chars: string; zone: AsciiCell["zone"]; twinkleDelay?: number }[][],
+  );
+  const world = $derived(computeWorldParams(now, 0, skyParams));
+  // Scale the fixed-font art block down to the container so narrow cards see
+  // the whole scene (matching the canvas renderers) instead of clipping it.
+  const scale = $derived(naturalW > 0 && containerW > 0 ? Math.min(1, containerW / naturalW) : 1);
+  const bgStyle = $derived(
+    bgUrl
+      ? `background-image: url(${bgUrl}); background-size: 100% 100%; image-rendering: pixelated;`
+      : "",
   );
 
   $effect(() => {
@@ -83,6 +100,51 @@
   });
 
   $effect(() => {
+    if (!container || !artBlock) return;
+
+    const measure = () => {
+      // offsetWidth/Height report layout size, unaffected by the scale transform
+      naturalW = artBlock?.offsetWidth ?? 0;
+      naturalH = artBlock?.offsetHeight ?? 0;
+      containerW = container?.clientWidth ?? 0;
+    };
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    observer.observe(artBlock);
+    measure();
+    return () => observer.disconnect();
+  });
+
+  $effect(() => {
+    const observer = new MutationObserver(() => {
+      themeVersion += 1;
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    return () => observer.disconnect();
+  });
+
+  // Dithered scene wash rendered at one pixel per character cell, scaled up
+  // with pixelated rendering so the background shares the glyph grid.
+  $effect(() => {
+    void themeVersion;
+    if (!container) return;
+
+    const palette = resolveZonePalette(getComputedStyle(container));
+    const pixels = renderBackgroundPixels(config, palette, world);
+    const tile = document.createElement("canvas");
+    tile.width = config.width;
+    tile.height = config.height;
+    const ctx = tile.getContext("2d");
+    if (!ctx) return;
+    ctx.putImageData(new ImageData(pixels, config.width, config.height), 0, 0);
+    bgUrl = tile.toDataURL();
+  });
+
+  $effect(() => {
     if (!shouldAnimate) {
       return;
     }
@@ -119,16 +181,21 @@
   transition:fade={{ duration: 1000 }}
   aria-hidden="true"
 >
-  <div class="art-block">
-    {#each spans as row}
-      <p>
-        {#each row as run}<span
-            class={run.zone}
-            style={run.twinkleDelay != null ? `animation-delay: ${run.twinkleDelay}s` : undefined}
-            >{run.chars}</span
-          >{/each}
-      </p>
-    {/each}
+  <div
+    class="scale-box"
+    style={naturalW > 0 ? `width:${naturalW * scale}px;height:${naturalH * scale}px;` : undefined}
+  >
+    <div bind:this={artBlock} class="art-block" style={`${bgStyle}transform:scale(${scale});`}>
+      {#each spans as row}
+        <p>
+          {#each row as run}<span
+              class={run.zone}
+              style={run.twinkleDelay != null ? `animation-delay: ${run.twinkleDelay}s` : undefined}
+              >{run.chars}</span
+            >{/each}
+        </p>
+      {/each}
+    </div>
   </div>
 </div>
 
@@ -140,11 +207,17 @@
     text-align: center;
   }
 
+  .scale-box {
+    display: inline-block;
+    overflow: hidden;
+  }
+
   .art-block {
     display: inline-block;
     text-align: left;
     white-space: pre;
     font-size: 11px;
+    transform-origin: top left;
   }
 
   .star {
@@ -166,6 +239,14 @@
 
   .sun {
     color: var(--color-horizon-sun);
+  }
+
+  .moon-core {
+    color: var(--color-horizon-moon-core);
+  }
+
+  .moon {
+    color: var(--color-horizon-moon);
   }
 
   .horizon {

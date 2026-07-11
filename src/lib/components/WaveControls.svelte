@@ -104,9 +104,12 @@
       <div class="equation">
         <p class="eq-line">
           <em>h</em>(<em>u</em>, <em>v</em>, <em>t</em>) = <em>S</em>(<em>u</em>, <em>v</em>,
-          <em>t</em>) + <em>v</em><sup>1.2</sup><em>C</em>(<em>u</em>, <em>v</em>, <em>t</em>)
+          <em>t</em>) + <em>v</em><sup>1.2</sup><em>C</em>(<em>u</em>, <em>v</em>, <em>t</em>) +
+          <em>R</em>(<em>u</em>, <em>v</em>, <em>t</em>)
         </p>
-        <p class="eq-detail">Two-band directional wave synthesis: slow swell + foreground chop</p>
+        <p class="eq-detail">
+          Three-band directional synthesis: slow swell + foreground chop + fast ripple
+        </p>
         <p class="eq-detail">Reflection uses local slope alignment, not wave height</p>
       </div>
 
@@ -143,6 +146,13 @@
             step="0.05"
             bind:value={params.reflectionSharpness}
           />
+        </label>
+
+        <label class="slider-row">
+          <span class="slider-label"
+            >Shimmer <span class="slider-value">{params.shimmer.toFixed(2)}</span></span
+          >
+          <input type="range" min="0" max="2" step="0.05" bind:value={params.shimmer} />
         </label>
 
         <label class="slider-row">

@@ -12,12 +12,21 @@ export interface ZonePalette {
   "sky-glow": string;
   "sun-core": string;
   sun: string;
+  "moon-core": string;
+  moon: string;
   horizon: string;
   water: string;
   "water-reflect": string;
   "water-reflect-warm": string;
   "water-reflect-cool": string;
   "water-far": string;
+  /* Painted scene background ramp (not glyph zones) */
+  "bg-sky-top": string;
+  "bg-sky-low": string;
+  "bg-glow": string;
+  "bg-moon-glow": string;
+  "bg-water-top": string;
+  "bg-water-deep": string;
 }
 
 export interface MonoMetrics {
@@ -38,6 +47,8 @@ const ZONE_VARIABLES: Record<AsciiCell["zone"], string> = {
   "sky-glow": "--color-horizon-sky-glow",
   "sun-core": "--color-horizon-sun-core",
   sun: "--color-horizon-sun",
+  "moon-core": "--color-horizon-moon-core",
+  moon: "--color-horizon-moon",
   horizon: "--color-horizon-horizon",
   water: "--color-horizon-water",
   "water-reflect": "--color-horizon-water-reflect",
@@ -45,6 +56,15 @@ const ZONE_VARIABLES: Record<AsciiCell["zone"], string> = {
   "water-reflect-cool": "--color-horizon-water-reflect-cool",
   "water-far": "--color-horizon-water-far",
 };
+
+const BACKGROUND_VARIABLES = {
+  "bg-sky-top": "--color-horizon-bg-sky-top",
+  "bg-sky-low": "--color-horizon-bg-sky-low",
+  "bg-glow": "--color-horizon-bg-glow",
+  "bg-moon-glow": "--color-horizon-bg-moon-glow",
+  "bg-water-top": "--color-horizon-bg-water-top",
+  "bg-water-deep": "--color-horizon-bg-water-deep",
+} as const;
 
 export function encodeRuns(grid: AsciiCell[][]): AsciiRun[][] {
   return grid.map((row) => {
@@ -73,12 +93,20 @@ export function resolveZonePalette(styles: CSSStyleDeclaration): ZonePalette {
     "sky-glow": styles.getPropertyValue(ZONE_VARIABLES["sky-glow"]).trim(),
     "sun-core": styles.getPropertyValue(ZONE_VARIABLES["sun-core"]).trim(),
     sun: styles.getPropertyValue(ZONE_VARIABLES.sun).trim(),
+    "moon-core": styles.getPropertyValue(ZONE_VARIABLES["moon-core"]).trim(),
+    moon: styles.getPropertyValue(ZONE_VARIABLES.moon).trim(),
     horizon: styles.getPropertyValue(ZONE_VARIABLES.horizon).trim(),
     water: styles.getPropertyValue(ZONE_VARIABLES.water).trim(),
     "water-reflect": styles.getPropertyValue(ZONE_VARIABLES["water-reflect"]).trim(),
     "water-reflect-warm": styles.getPropertyValue(ZONE_VARIABLES["water-reflect-warm"]).trim(),
     "water-reflect-cool": styles.getPropertyValue(ZONE_VARIABLES["water-reflect-cool"]).trim(),
     "water-far": styles.getPropertyValue(ZONE_VARIABLES["water-far"]).trim(),
+    "bg-sky-top": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-sky-top"]).trim(),
+    "bg-sky-low": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-sky-low"]).trim(),
+    "bg-glow": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-glow"]).trim(),
+    "bg-moon-glow": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-moon-glow"]).trim(),
+    "bg-water-top": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-water-top"]).trim(),
+    "bg-water-deep": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-water-deep"]).trim(),
   };
 }
 

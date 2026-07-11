@@ -37,6 +37,29 @@ export function getLosAngelesHours(now: number = Date.now()): number {
   return date.hour + date.minute / 60;
 }
 
+const SYNODIC_MONTH_DAYS = 29.530588853;
+// Reference new moon: 2000-01-06 18:14 UTC
+const NEW_MOON_EPOCH_MS = Date.UTC(2000, 0, 6, 18, 14);
+
+/** Lunar phase 0–1 (0 = new moon, 0.5 = full moon). */
+export function computeMoonPhase(now: number): number {
+  const days = (now - NEW_MOON_EPOCH_MS) / 86_400_000;
+  return (((days / SYNODIC_MONTH_DAYS) % 1) + 1) % 1;
+}
+
+// Sun stops reading as "setting" and the moon takes over once the sun is
+// this far below the horizon — past the point where horizonGlow matters.
+const NIGHT_ELEVATION = -0.25;
+
+function arcPosition(hourAngle: number): { x: number; y: number; elevation: number } {
+  const elevation = Math.sin((hourAngle - 0.25) * 2 * Math.PI);
+  const x = 0.5 - 0.35 * Math.sin(hourAngle * 2 * Math.PI);
+  // Map elevation onto a visible sky arc so time offset changes height as well as azimuth.
+  const visibleElevation = Math.max(-0.35, elevation);
+  const y = Math.max(0.18, Math.min(0.78, 0.65 - visibleElevation * 0.28));
+  return { x, y, elevation };
+}
+
 export function computeWorldParams(
   now: number,
   waterTime: number = 0,
@@ -47,13 +70,16 @@ export function computeWorldParams(
   const hourAngle = (((hours % 24) + 24) % 24) / 24;
 
   // Sun elevation: peaks at noon (hour 12), bottoms at midnight
-  const sunElevation = Math.sin((hourAngle - 0.25) * 2 * Math.PI);
+  const sun = arcPosition(hourAngle);
+  const sunElevation = sun.elevation;
 
-  // Sun moves east→west across the sky
-  const sunX = 0.5 - 0.35 * Math.sin(hourAngle * 2 * Math.PI);
-  // Map solar elevation onto a visible sky arc so time offset changes height as well as azimuth.
-  const visibleElevation = Math.max(-0.35, sunElevation);
-  const sunY = Math.max(0.18, Math.min(0.78, 0.65 - visibleElevation * 0.28));
+  // At night the moon rides the same arc half a day out of phase, so it
+  // rises in the east as the sun sets in the west.
+  const isNight = sunElevation < NIGHT_ELEVATION;
+  const moon = arcPosition((hourAngle + 0.5) % 1);
+  const body = isNight ? moon : sun;
+  const moonPhase = computeMoonPhase(now);
+  const moonIllum = (1 - Math.cos(moonPhase * 2 * Math.PI)) / 2;
 
   // Season factor: cosine curve peaking at summer solstice (~day 172)
   const startOfYear = Date.UTC(date.year, 0, 0);
@@ -70,8 +96,12 @@ export function computeWorldParams(
   return {
     hourAngle,
     sunElevation,
-    sunX,
-    sunY,
+    sunX: body.x,
+    sunY: body.y,
+    bodyElevation: body.elevation,
+    isNight,
+    moonPhase,
+    moonIllum,
     seasonFactor,
     starDensity,
     horizonGlow,

@@ -76,7 +76,7 @@
     </div>
   {/if}
 
-  <div class="horizon-card">
+  <div class="horizon-card horizon-scene">
     {#if mode === "worker"}
       <AsciiHorizonWorkerCanvas {waveParams} {skyParams} />
     {:else if mode === "webgl"}
@@ -97,11 +97,13 @@
   }
 
   .horizon-card {
-    background: #08111d;
+    background: var(--color-horizon-bg);
+    border: 1px solid var(--color-theme-border);
     border-radius: 0.75rem;
     padding: 1.5rem 1rem;
     overflow: hidden;
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+    transition: background-color 0.25s;
   }
 
   .renderer-switcher {

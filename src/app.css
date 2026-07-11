@@ -71,18 +71,60 @@
   --color-theme-divider: var(--color-sunset-amber-200);
   --color-theme-selection: var(--color-sunset-amber-100);
 
-  /* Horizon visualization — always renders on the postcard's navy background */
-  --color-horizon-star: #fcd34d;
-  --color-horizon-sky: #94a3b8;
-  --color-horizon-sky-glow: #fb923c;
-  --color-horizon-sun-core: #fbbf24;
-  --color-horizon-sun: #fcd34d;
-  --color-horizon-horizon: #f97316;
-  --color-horizon-water: #7dd3fc;
-  --color-horizon-water-reflect: #fcd34d;
-  --color-horizon-water-reflect-warm: #e0a870;
-  --color-horizon-water-reflect-cool: #8fb8cc;
-  --color-horizon-water-far: #60a5fa;
+  /* Horizon visualization — dark navy postcard palette. The particles sketch reads
+     these from the document root; the ASCII postcard overrides them per-theme via
+     the .horizon-scene scope below. */
+  --color-horizon-star: #ffe7a3;
+  --color-horizon-sky: #59708d;
+  --color-horizon-sky-glow: #ff7a32;
+  --color-horizon-sun-core: #ffd166;
+  --color-horizon-sun: #ff9f3f;
+  --color-horizon-horizon: #e85d2a;
+  --color-horizon-water: #1f5f7a;
+  --color-horizon-water-reflect: #ffd166;
+  --color-horizon-water-reflect-warm: #f08a4b;
+  --color-horizon-water-reflect-cool: #376d8d;
+  --color-horizon-water-far: #243b6b;
+}
+
+/* Horizon postcard scene — navy postcard by default (dark theme + fallback).
+   The renderers paint a sky/glow/water gradient from the bg-* ramp behind the
+   glyphs, so the piece carries its own scene instead of relying on the card. */
+.horizon-scene {
+  --color-horizon-bg: #08111d;
+  --color-horizon-bg-sky-top: #081018;
+  --color-horizon-bg-sky-low: #2a2440;
+  --color-horizon-bg-glow: #7d3418;
+  --color-horizon-bg-moon-glow: #2e4059;
+  --color-horizon-bg-water-top: #0d2233;
+  --color-horizon-bg-water-deep: #071018;
+  --color-horizon-moon-core: #eef2f7;
+  --color-horizon-moon: #b9c7d9;
+}
+
+/* Light theme: a day-lit postcard — pale blue sky, deeper blue ocean, warm
+   glow near the sun. Glyphs read as ink over the painted washes. */
+:root:not([data-theme="dark"]) .horizon-scene {
+  --color-horizon-bg: #fdf6ea;
+  --color-horizon-bg-sky-top: #b9d6ea;
+  --color-horizon-bg-sky-low: #e8d9bf;
+  --color-horizon-bg-glow: #f4b061;
+  --color-horizon-bg-moon-glow: #6f94b8;
+  --color-horizon-bg-water-top: #93bad2;
+  --color-horizon-bg-water-deep: #5d87a9;
+  --color-horizon-star: #b97f2b;
+  --color-horizon-sky: #7391ab;
+  --color-horizon-sky-glow: #e56f33;
+  --color-horizon-sun-core: #f28405;
+  --color-horizon-sun: #e2650b;
+  --color-horizon-moon-core: #f4f9fd;
+  --color-horizon-moon: #7e9cb8;
+  --color-horizon-horizon: #d14e17;
+  --color-horizon-water: #2b5876;
+  --color-horizon-water-reflect: #e8940f;
+  --color-horizon-water-reflect-warm: #d1713a;
+  --color-horizon-water-reflect-cool: #e4f1f7;
+  --color-horizon-water-far: #24476b;
 }
 
 html[data-theme="dark"] {
