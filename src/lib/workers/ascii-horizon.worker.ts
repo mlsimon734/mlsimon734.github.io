@@ -1,7 +1,10 @@
 /// <reference lib="webworker" />
 
 import { generateHorizon, type GridConfig, type SkyParams, type WaveParams } from "$lib/horizon";
+import { renderBackgroundPixels } from "$lib/horizon/background";
 import { encodeRuns, type MonoMetrics, type ZonePalette } from "$lib/horizon/render";
+import { computeWorldParams } from "$lib/horizon/world";
+import type { WorldParams } from "$lib/horizon/types";
 
 interface InitMessage {
   type: "init";
@@ -93,6 +96,34 @@ function resizeCanvas() {
   state.ctx.textBaseline = "top";
 }
 
+let bgTile: OffscreenCanvas | null = null;
+let bgTileCtx: OffscreenCanvasRenderingContext2D | null = null;
+
+/**
+ * Paint the dithered scene wash: rendered at one pixel per character cell,
+ * then scaled up without smoothing so the background shares the glyphs'
+ * chunky grid resolution instead of a smooth gradient.
+ */
+function paintBackground(
+  ctx: OffscreenCanvasRenderingContext2D,
+  metrics: MonoMetrics,
+  config: GridConfig,
+  palette: ZonePalette,
+  world: WorldParams,
+) {
+  if (!bgTile || bgTile.width !== config.width || bgTile.height !== config.height) {
+    bgTile = new OffscreenCanvas(config.width, config.height);
+    bgTileCtx = bgTile.getContext("2d");
+  }
+  if (!bgTileCtx) return;
+
+  const pixels = renderBackgroundPixels(config, palette, world);
+  bgTileCtx.putImageData(new ImageData(pixels, config.width, config.height), 0, 0);
+
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(bgTile, 0, 0, metrics.cssWidth, metrics.cssHeight);
+}
+
 function render() {
   if (
     !state.ctx ||
@@ -106,6 +137,7 @@ function render() {
   }
 
   const waterTime = getWaterTime(performance.now());
+  const world = computeWorldParams(Date.now(), waterTime, state.skyParams);
   const grid = generateHorizon(
     Date.now(),
     state.config,
@@ -116,7 +148,7 @@ function render() {
   const runs = encodeRuns(grid);
   const { ctx } = state;
 
-  ctx.clearRect(0, 0, state.metrics.cssWidth, state.metrics.cssHeight);
+  paintBackground(ctx, state.metrics, state.config, state.palette, world);
   ctx.font = state.metrics.font;
   ctx.textBaseline = "top";
 

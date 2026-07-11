@@ -45,15 +45,16 @@
   }
 
   async function refreshPresentation() {
-    if (!canvas) return;
+    if (!canvas || !container) return;
     await document.fonts.ready;
-    if (!canvas) return;
+    if (!canvas || !container) return;
 
     const nextMetrics = createMonoMetrics(
       config,
       measureCharWidth('11px "JetBrains Mono", ui-monospace, monospace'),
     );
-    const nextPalette = resolveZonePalette(getComputedStyle(document.documentElement));
+    // Resolve from the container so the theme-scoped .horizon-scene palette applies
+    const nextPalette = resolveZonePalette(getComputedStyle(container));
 
     metrics = nextMetrics;
     palette = nextPalette;
@@ -180,19 +181,7 @@
         cssWidth: metrics.cssWidth,
         cssHeight: metrics.cssHeight,
       },
-      palette: {
-        star: palette.star,
-        sky: palette.sky,
-        "sky-glow": palette["sky-glow"],
-        "sun-core": palette["sun-core"],
-        sun: palette.sun,
-        horizon: palette.horizon,
-        water: palette.water,
-        "water-reflect": palette["water-reflect"],
-        "water-reflect-warm": palette["water-reflect-warm"],
-        "water-reflect-cool": palette["water-reflect-cool"],
-        "water-far": palette["water-far"],
-      },
+      palette: { ...palette },
       reducedMotion,
       active: shouldAnimate,
       waveParams: { ...waveParams },

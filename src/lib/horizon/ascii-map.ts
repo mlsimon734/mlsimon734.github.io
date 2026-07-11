@@ -74,9 +74,9 @@ export function classifyZoneGrid(
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist < 0.55) {
-          row.push("sun-core");
+          row.push(params.isNight ? "moon-core" : "sun-core");
         } else if (dist < 1.45) {
-          row.push("sun");
+          row.push(params.isNight ? "moon" : "sun");
         } else if (dist < 2.8 && params.horizonGlow > 0.3) {
           row.push("sky-glow");
         } else {
@@ -96,7 +96,8 @@ export function classifyZoneGrid(
       } else if (centerSy >= subHorizonRow && centerSy < subHorizonRow + 4) {
         const dxNorm = (centerSx - sunCenterX) / subWidth;
         const proximity = Math.exp(-(dxNorm * dxNorm) / (2 * 0.11 * 0.11));
-        if (proximity > 0.18) {
+        if (proximity > 0.18 && !params.isNight) {
+          // The warm horizon band belongs to the sun; moonlit horizons stay cool
           row.push("horizon");
         } else {
           row.push("water");
@@ -116,16 +117,20 @@ export function classifyZoneGrid(
           centerSx,
           waterT,
           sunCenterX,
-          params.sunElevation,
+          params.bodyElevation,
           subWidth,
           sample,
           waveParams,
         );
-        const reflectFade = Math.max(0, Math.min(1, (params.sunElevation + 0.75) / 0.85));
-        const reflectScore = reflection.reflectScore * reflectFade;
+        const reflectFade = Math.max(0, Math.min(1, (params.bodyElevation + 0.75) / 0.85));
+        const moonFade = params.isNight ? 0.35 + 0.65 * params.moonIllum : 1;
+        const reflectScore = reflection.reflectScore * reflectFade * moonFade;
         const isCoolBreak = sample.crest < -0.18;
 
-        if (reflectScore > 0.06) {
+        if (params.isNight && reflectScore > 0.13) {
+          // Moonglint column reads as pale light, never amber
+          row.push(reflectScore > 0.28 ? "water-reflect-cool" : "water");
+        } else if (!params.isNight && reflectScore > 0.06) {
           if (reflectScore > 0.28) {
             row.push(isCoolBreak ? "water-reflect-warm" : "water-reflect");
           } else if (reflectScore > 0.13) {
@@ -133,6 +138,9 @@ export function classifyZoneGrid(
           } else {
             row.push(isCoolBreak ? "water" : "water-reflect-cool");
           }
+        } else if (sample.glitter > 0.85 && waterT > 0.12) {
+          // Ambient sky glints scattered across the open water
+          row.push("water-reflect-cool");
         } else if (waterT > 0.6) {
           row.push("water-far");
         } else {

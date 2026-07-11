@@ -1,8 +1,17 @@
 export interface WorldParams {
   hourAngle: number;
   sunElevation: number;
+  /** Position of the visible celestial body — the sun by day, the moon at night. */
   sunX: number;
   sunY: number;
+  /** Elevation of the visible body; drives reflection strength on the water. */
+  bodyElevation: number;
+  /** True when the sun is well below the horizon and the moon takes over. */
+  isNight: boolean;
+  /** Lunar phase 0–1: 0 = new, 0.5 = full. */
+  moonPhase: number;
+  /** Illuminated fraction of the lunar disc, 0–1. */
+  moonIllum: number;
   seasonFactor: number;
   starDensity: number;
   horizonGlow: number;
@@ -18,6 +27,8 @@ export interface AsciiCell {
     | "sky-glow"
     | "sun-core"
     | "sun"
+    | "moon-core"
+    | "moon"
     | "horizon"
     | "water"
     | "water-reflect"
@@ -32,6 +43,7 @@ export interface WaveParams {
   chopScale: number;
   crestSharpness: number;
   reflectionSharpness: number;
+  shimmer: number;
   speed: number;
 }
 
@@ -40,6 +52,7 @@ export const DEFAULT_WAVE_PARAMS: WaveParams = {
   chopScale: 14,
   crestSharpness: 1.3,
   reflectionSharpness: 2.4,
+  shimmer: 1.0,
   speed: 0.28,
 };
 

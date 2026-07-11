@@ -64,11 +64,29 @@ export function generateSkyBuffer(
           brightness += params.horizonGlow * 50 * glowT * lateral;
         }
 
-        // Sun disc — solid core with smooth quadratic edge
         const dx = (x - sunCenterX) / sunRadiusX;
         const dy = (y - sunCenterY) / sunRadiusY;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 3.0) {
+        if (params.isNight) {
+          // Moon disc — phase terminator masks the unlit side. A point on the
+          // projected disc is lit when it sits sunward of the terminator
+          // ellipse x = cos(2π·phase)·√(1−y²).
+          if (dist < 2.2) {
+            const litLimit =
+              Math.cos(params.moonPhase * 2 * Math.PI) * Math.sqrt(Math.max(0, 1 - dy * dy));
+            const lit = params.moonPhase < 0.5 ? dx >= litLimit : dx <= -litLimit;
+            let moonBrightness = 0;
+            if (dist < 1 && lit) {
+              moonBrightness = dist < 0.78 ? 235 : 235 * (1 - (dist - 0.78) / 0.22);
+            } else if (dist < 1) {
+              // Faint earthshine keeps the dark limb barely legible
+              moonBrightness = 34;
+            }
+            const halo = Math.max(0, 1 - dist / 2.2);
+            brightness = Math.max(brightness, moonBrightness, halo * halo * 46 * params.moonIllum);
+          }
+        } else if (dist < 3.0) {
+          // Sun disc — solid core with smooth quadratic edge
           let sunBrightness: number;
           if (dist < 0.62) {
             // Keep only the very center solid; the edge carries the circle.
@@ -102,14 +120,15 @@ export function generateSkyBuffer(
           x,
           bandT * 0.08,
           sunCenterX,
-          params.sunElevation,
+          params.bodyElevation,
           subWidth,
           sample,
           waveParams,
         );
         const horizonReflect =
           36 * Math.max(0.25, params.horizonGlow) * Math.max(reflection.reflectScore, gauss * 0.16);
-        const waterBright = 126 + 8 * sample.crest + horizonReflect;
+        const bandShimmer = 10 * (sample.glitter - 0.5) * 2;
+        const waterBright = 126 + 8 * sample.crest + horizonReflect + bandShimmer;
         const blend = bandT * bandT;
         brightness = clamp(horizonBright * (1 - blend) + waterBright * blend);
       } else {
@@ -128,16 +147,20 @@ export function generateSkyBuffer(
           x,
           waterT,
           sunCenterX,
-          params.sunElevation,
+          params.bodyElevation,
           subWidth,
           sample,
           waveParams,
         );
         const twilight = Math.max(0, (params.sunElevation + 0.5) / 1.5);
-        const glowFactor = Math.max(0.15, params.horizonGlow, twilight * 0.6);
-        const amplitude = lerp(10, 26, Math.pow(waterT, 0.9));
+        const moonlight = params.isNight ? 0.45 * params.moonIllum : 0;
+        const glowFactor = Math.max(0.15, params.horizonGlow, twilight * 0.6, moonlight);
+        const amplitude = lerp(14, 32, Math.pow(waterT, 0.9));
         const reflectBrightness = 132 * glowFactor * reflection.reflectScore;
-        brightness = clamp(waterBase + amplitude * sample.crest + reflectBrightness);
+        const shimmerBrightness = lerp(8, 18, waterT) * (sample.glitter - 0.5) * 2;
+        brightness = clamp(
+          waterBase + amplitude * sample.crest + reflectBrightness + shimmerBrightness,
+        );
       }
 
       data[idx] = clamp(brightness);
@@ -156,6 +179,11 @@ export function generateSkyBuffer(
   for (let i = 0; i < starCount; i++) {
     const cx = Math.floor(rng() * config.width);
     const cy = Math.floor(rng() * starTopRows);
+    // Keep stars away from the sun/moon disc — a 255 block inside the moon
+    // would read as a bright square on the unlit side of the crescent.
+    const sdx = (cx * 2 + 1 - sunCenterX) / sunRadiusX;
+    const sdy = (cy * 4 + 2 - sunCenterY) / sunRadiusY;
+    if (Math.sqrt(sdx * sdx + sdy * sdy) < 3.0) continue;
     // Fill entire 2×4 sub-pixel block with 255
     for (let dx = 0; dx < 2; dx++) {
       for (let dy = 0; dy < 4; dy++) {

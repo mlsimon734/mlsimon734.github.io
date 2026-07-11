@@ -6,6 +6,8 @@ interface OceanSample {
   slopeX: number;
   slopeY: number;
   crest: number;
+  /** Fine ripple field, 0–1 centred on 0.5 — drives ambient glitter and micro-texture. */
+  glitter: number;
 }
 
 interface ReflectionMetrics {
@@ -61,8 +63,25 @@ const CHOP_COMPONENTS: readonly OceanComponent[] = [
   component(16.0, 0.08, 1.72, 116, 4.0),
 ];
 
+// High-frequency fast ripple: sampled with a *linear* perspective map so rows
+// near the horizon keep distinct phases (the swell/chop perspective curve
+// compresses them into one phase, which is what left the far field static).
+const RIPPLE_COMPONENTS: readonly OceanComponent[] = [
+  component(21.0, 0.55, 2.1, 84, 0.4),
+  component(27.0, 0.4, 2.7, 66, 3.4),
+  component(34.0, 0.3, 3.2, 112, 1.6),
+];
+
 const SWELL_TOTAL = SWELL_COMPONENTS.reduce((sum, wave) => sum + wave.amplitude, 0);
 const CHOP_TOTAL = CHOP_COMPONENTS.reduce((sum, wave) => sum + wave.amplitude, 0);
+const RIPPLE_TOTAL = RIPPLE_COMPONENTS.reduce((sum, wave) => sum + wave.amplitude, 0);
+
+// Height range that maps onto the crest sigmoid; without it tanh saturates
+// into flat ±1 patches and the mid-tone glyphs never appear.
+const CREST_RANGE = 14;
+// How strongly ripple micro-facets perturb the reflection slopes.
+// Keep small: too much breaks specular alignment and starves the sun column.
+const RIPPLE_SLOPE_SCALE = 1.2;
 
 function derivativeVPerspective(v: number): number {
   if (v <= 0) return 0;
@@ -130,35 +149,50 @@ export function sampleOceanSurface(
   waveParams: WaveParams = DEFAULT_WAVE_PARAMS,
 ): OceanSample {
   const { swellScale, chopScale, crestSharpness } = waveParams;
+  const shimmer = waveParams.shimmer ?? 1;
   const u = width > 0 ? x / width : 0;
   const v = Math.max(0, Math.min(1, waterT));
   const vPerspective = 0.18 + 0.82 * Math.pow(v, 1.35);
   const vChop = Math.pow(v, 1.2);
   const vCrest = Math.pow(v, 1.1);
+  const vRipple = 0.06 + 0.94 * v;
+  const rippleEnvelope = 0.4 + 0.6 * v;
   const swell = sampleBand(SWELL_COMPONENTS, u, vPerspective, timeSeconds);
   const chop = sampleBand(CHOP_COMPONENTS, u, vPerspective, timeSeconds);
+  const ripple = sampleBand(RIPPLE_COMPONENTS, u, vRipple, timeSeconds);
   const swellSum = swell.sum / SWELL_TOTAL;
   const chopSum = chop.sum / CHOP_TOTAL;
+  const rippleSum = ripple.sum / RIPPLE_TOTAL;
   const dvPerspective = derivativeVPerspective(v);
   const dvChop = derivativeChopEnvelope(v);
+  const rippleScale = RIPPLE_SLOPE_SCALE * shimmer * rippleEnvelope;
 
   const heightRaw = swellScale * swellSum + chopScale * vChop * chopSum;
   const slopeXRaw =
-    swellScale * (swell.slopeX / SWELL_TOTAL) + chopScale * vChop * (chop.slopeX / CHOP_TOTAL);
+    swellScale * (swell.slopeX / SWELL_TOTAL) +
+    chopScale * vChop * (chop.slopeX / CHOP_TOTAL) +
+    rippleScale * (ripple.slopeX / RIPPLE_TOTAL);
   const slopeYRaw =
     swellScale * (swell.slopeY / SWELL_TOTAL) * dvPerspective +
-    chopScale * (dvChop * chopSum + vChop * (chop.slopeY / CHOP_TOTAL) * dvPerspective);
+    chopScale * (dvChop * chopSum + vChop * (chop.slopeY / CHOP_TOTAL) * dvPerspective) +
+    rippleScale * (ripple.slopeY / RIPPLE_TOTAL) * 0.94;
 
   // Convert from normalised-coordinate derivatives into screen-space-ish slopes.
   const slopeX = slopeXRaw / Math.max(width, 1);
   const slopeY = slopeYRaw / Math.max(height * 0.35, 1);
-  const crest = Math.tanh(heightRaw + crestSharpness * vCrest * chopSum);
+  const crest = Math.tanh(
+    heightRaw / CREST_RANGE +
+      crestSharpness * vCrest * chopSum +
+      0.15 * shimmer * rippleSum * rippleEnvelope,
+  );
+  const glitter = clamp01(0.5 + 0.5 * shimmer * rippleSum * rippleEnvelope);
 
   return {
     height: heightRaw,
     slopeX,
     slopeY,
     crest,
+    glitter,
   };
 }
 
