@@ -11,11 +11,16 @@ Use `bun` — not `npm`. All commands: `bun run`, `bun install`, `bunx`, etc.
 
 ## Linting & Formatting
 
-- `bun run lint` — oxlint (lints `<script>` blocks of `.svelte` plus `.ts`/`.js`)
+- `bun run lint` — oxlint (lints `<script>` blocks of `.svelte` plus
+  `.ts`/`.js`)
 - `bun run lint:fix` — apply oxlint auto-fixes
-- `bun run format` — prettier (with `prettier-plugin-svelte` + `prettier-plugin-tailwindcss`)
+- `bun run format` — prettier (with `prettier-plugin-svelte` +
+  `prettier-plugin-tailwindcss`)
 - `bun run format:check` — verify formatting without writing
 - Config in `.prettierrc`: 2-space, double quotes, trailing commas, 100 col
+- Markdown overrides to 80 col with `proseWrap: "always"` — paragraphs hard-wrap
+  on format, so prose diffs stay line-scoped instead of one long line. Don't
+  hand-wrap; let `bun run format` do it.
 
 ## Fonts
 
