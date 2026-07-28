@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { listPosts } from "$lib/posts";
 
 // Prerendered at build time by adapter-static; git is only needed then.
 export const prerender = true;
@@ -27,15 +28,24 @@ function lastCommitDate(sources: string[]): string {
   return dated || execSync("git log -1 --format=%cs").toString().trim();
 }
 
-export function GET(): Response {
-  const urls = PAGES.map(
-    (page) =>
-      `  <url>\n` +
-      `    <loc>${SITE}${page.path}</loc>\n` +
-      `    <lastmod>${lastCommitDate(page.sources)}</lastmod>\n` +
-      `    <priority>${page.priority}</priority>\n` +
-      `  </url>`,
-  ).join("\n");
+export async function GET(): Promise<Response> {
+  const posts = await listPosts();
+  const postPages: SitemapPage[] = posts.map((post) => ({
+    path: `/writing/${post.slug}`,
+    priority: "0.7",
+    sources: [`src/posts/${post.slug}.md`],
+  }));
+
+  const urls = [...PAGES, ...postPages]
+    .map(
+      (page) =>
+        `  <url>\n` +
+        `    <loc>${SITE}${page.path}</loc>\n` +
+        `    <lastmod>${lastCommitDate(page.sources)}</lastmod>\n` +
+        `    <priority>${page.priority}</priority>\n` +
+        `  </url>`,
+    )
+    .join("\n");
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 

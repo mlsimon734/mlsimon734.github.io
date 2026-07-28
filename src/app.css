@@ -322,6 +322,130 @@ hr {
   border-color: var(--color-theme-border) !important;
 }
 
+/* Essay body — mdsvex output, so these must stay global (unscoped). */
+.prose {
+  font-family: var(--font-serif);
+  font-size: 1.1875rem;
+  line-height: 1.7;
+  color: var(--color-theme-text);
+}
+
+.prose > * + * {
+  margin-top: 1.35em;
+}
+
+.prose h2,
+.prose h3 {
+  font-family: var(--font-sans);
+  color: var(--color-theme-heading);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin-top: 2.25em;
+  margin-bottom: -0.35em;
+  text-wrap: balance;
+}
+
+.prose h2 {
+  font-size: 1.375rem;
+  font-weight: 600;
+}
+
+.prose h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-theme-muted);
+}
+
+.prose a {
+  @apply decoration-sunset-amber-400 underline underline-offset-[3px];
+  color: var(--color-theme-heading);
+  transition:
+    color 0.2s,
+    text-decoration-color 0.2s;
+}
+
+.prose a:hover {
+  text-decoration-color: var(--color-sunset-amber-500);
+}
+
+.prose strong {
+  font-weight: 600;
+  color: var(--color-theme-heading);
+}
+
+.prose blockquote {
+  border-left: 2px solid var(--color-sunset-amber-300);
+  padding-left: 1.125rem;
+  color: var(--color-theme-muted);
+  font-style: italic;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.5rem;
+}
+
+.prose ul {
+  list-style: none;
+  padding-left: 1.125rem;
+}
+
+.prose ol {
+  list-style: decimal;
+}
+
+.prose li + li {
+  margin-top: 0.4em;
+}
+
+.prose ul > li {
+  position: relative;
+  padding-left: 0.875rem;
+}
+
+.prose ul > li::before {
+  content: "·";
+  position: absolute;
+  left: 0;
+  color: var(--color-sunset-amber-400);
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--color-theme-hover);
+  border-radius: 0.25rem;
+  padding: 0.1em 0.35em;
+}
+
+.prose pre {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  background: var(--color-theme-surface);
+  border: 1px solid var(--color-theme-border);
+  border-radius: 0.5rem;
+  padding: 1rem 1.125rem;
+  overflow-x: auto;
+}
+
+.prose pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+.prose hr {
+  margin-top: 2.5em;
+  margin-bottom: 2.5em;
+}
+
 /* Scroll reveal animations */
 @media (prefers-reduced-motion: no-preference) {
   .reveal {
