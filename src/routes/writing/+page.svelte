@@ -1,27 +1,15 @@
 <script lang="ts">
-  import { ArrowUpRight } from "lucide-svelte";
   import Seo from "$lib/components/Seo.svelte";
   import { inview } from "$lib/actions/inview";
 
-  type Essay = {
-    title: string;
-    href: string;
-    external?: boolean;
-    date: string;
-    blurb: string;
-  };
+  let { data } = $props();
 
-  // TODO: replace placeholder with real essays as you write them.
-  const essays: Essay[] = [
-    {
-      title: "Lobsters first: on Stross, moltenet, and fiction-becoming-reality",
-      href: "https://github.com/mlsimon734",
-      external: true,
-      date: "forthcoming",
-      blurb:
-        "Charles Stross predicted that the first uploaded consciousnesses would be lobsters — small brains, low neuron count. Recently, someone built moltenet, a social network for language model agents as crabs and lobsters. A note on the moments when speculative fiction quietly becomes ambient.",
-    },
-  ];
+  const formatted = (date: string): string =>
+    new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      timeZone: "UTC",
+    });
 </script>
 
 <Seo
@@ -37,21 +25,16 @@
     <p class="text-warm-500 mb-8">Notes on research, software, and theory of knowledge.</p>
 
     <ul class="space-y-2">
-      {#each essays as essay}
+      {#each data.posts as post (post.slug)}
         <li>
-          <a
-            href={essay.href}
-            target={essay.external ? "_blank" : undefined}
-            rel={essay.external ? "noopener noreferrer" : undefined}
-            class="work-link"
-          >
+          <a href="/writing/{post.slug}" class="work-link">
             <span class="work-name">
-              {essay.title}
-              {#if essay.external}<ArrowUpRight size={18} class="work-arrow" />{/if}
+              {post.title}
+              {#if post.draft}<span class="essay-draft">draft</span>{/if}
             </span>
             <span class="work-desc">
-              {essay.blurb}
-              <span class="essay-date">— {essay.date}</span>
+              {post.description}
+              <span class="essay-date">— {formatted(post.date)}</span>
             </span>
           </a>
         </li>
@@ -67,5 +50,18 @@
     font-family: var(--font-mono);
     font-size: 0.8125rem;
     color: var(--color-sunset-amber-500);
+  }
+
+  .essay-draft {
+    margin-left: 0.375rem;
+    border: 1px solid var(--color-theme-border);
+    border-radius: 0.25rem;
+    padding: 0.0625rem 0.375rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-theme-subtle);
   }
 </style>
