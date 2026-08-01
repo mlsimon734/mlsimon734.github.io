@@ -78,9 +78,13 @@ export function renderBackgroundPixels(
     WorldParams,
     | "sunX"
     | "sunY"
+    | "sunVisibility"
     | "sunElevation"
+    | "moonX"
+    | "moonY"
+    | "moonVisibility"
     | "horizonGlow"
-    | "isNight"
+    | "nightFactor"
     | "moonIllum"
     | "waterTime"
     | "dayOfYear"
@@ -96,16 +100,16 @@ export function renderBackgroundPixels(
   const waterDeep = hexToRgb(palette["bg-water-deep"]);
   // Deep night pulls the dusk band toward the zenith color so midnight
   // doesn't keep wearing sunset tones; dusk itself stays warm.
-  const nightT = world.isNight ? clamp01(-world.sunElevation * 1.2 - 0.2) : 0;
+  const nightT = world.nightFactor;
   const skyLow = mix(hexToRgb(palette["bg-sky-low"]), skyTop, 0.65 * nightT);
   const waterTop = mix(hexToRgb(palette["bg-water-top"]), waterDeep, 0.5 * nightT);
 
   const horizonRow = Math.floor(height * 0.65);
   const glowStrength = clamp01(world.horizonGlow);
-  const bodyCol = world.sunX * width;
-  const bodyRow = world.sunY * height;
-  const haloColor = world.isNight ? moonGlow : glow;
-  const haloStrength = world.isNight ? 0.4 * (0.35 + 0.65 * world.moonIllum) : 0.5;
+  const sunCol = world.sunX * width;
+  const sunRow = world.sunY * height;
+  const moonCol = world.moonX * width;
+  const moonRow = world.moonY * height;
 
   const pixels = new Uint8ClampedArray(width * height * 4);
 
@@ -113,15 +117,17 @@ export function renderBackgroundPixels(
     for (let x = 0; x < width; x++) {
       const threshold = bayerThreshold(x, y);
       const u = (x + 0.5) / width;
-      const dxNorm = u - world.sunX;
+      const sunDxNorm = u - world.sunX;
+      const moonDxNorm = u - world.moonX;
       let rgb: Rgb;
-      let glowMix = 0;
+      let sunGlowMix = 0;
+      let moonGlowMix = 0;
 
       if (y < horizonRow) {
         const skyT = y / Math.max(horizonRow - 1, 1);
         rgb = mix(skyTop, skyLow, ditherQuantize(skyT, SKY_LEVELS, threshold));
-        const lateral = Math.exp(-(dxNorm * dxNorm) / (2 * 0.32 * 0.32));
-        glowMix = 0.85 * glowStrength * lateral * Math.pow(skyT, 1.6);
+        const lateral = Math.exp(-(sunDxNorm * sunDxNorm) / (2 * 0.32 * 0.32));
+        sunGlowMix = 0.85 * glowStrength * lateral * Math.pow(skyT, 1.6);
 
         const atmosphere = sampleAtmosphere(
           x + 0.5,
@@ -132,7 +138,8 @@ export function renderBackgroundPixels(
           weather,
           world.dayOfYear,
         );
-        const hazeTint = world.isNight ? moonGlow : mix(skyLow, glow, 0.28 * glowStrength);
+        const daylightHaze = mix(skyLow, glow, 0.28 * glowStrength);
+        const hazeTint = mix(daylightHaze, moonGlow, nightT);
         rgb = mix(rgb, hazeTint, ditherQuantize(atmosphere.haze * 0.28, 5, threshold));
         const litCloud = mix(
           cloudShadow,
@@ -151,12 +158,11 @@ export function renderBackgroundPixels(
           waterDeep,
           ditherQuantize(Math.pow(waterT, 0.85), WATER_LEVELS, threshold),
         );
-        const lateral = Math.exp(-(dxNorm * dxNorm) / (2 * 0.18 * 0.18));
-        glowMix = 0.4 * glowStrength * lateral * (1 - waterT);
-        if (world.isNight) {
-          // Subtle cool wash under the moonglint column
-          glowMix = 0.22 * world.moonIllum * lateral * (1 - waterT);
-        }
+        const sunLateral = Math.exp(-(sunDxNorm * sunDxNorm) / (2 * 0.18 * 0.18));
+        const moonLateral = Math.exp(-(moonDxNorm * moonDxNorm) / (2 * 0.14 * 0.14));
+        sunGlowMix = 0.4 * glowStrength * sunLateral * world.sunVisibility * (1 - waterT);
+        // Subtle cool wash under the moonglint column.
+        moonGlowMix = 0.22 * world.moonIllum * world.moonVisibility * moonLateral * (1 - waterT);
         rgb = mix(
           rgb,
           skyLow,
@@ -164,19 +170,30 @@ export function renderBackgroundPixels(
         );
       }
 
-      // Halo around the sun/moon disc so the body reads against the wash.
-      // Column offsets scale by the cell aspect so the halo is circular in
-      // pixel space even though cells are ~2× taller than wide.
-      const dCol = (x - bodyCol) * CELL_ASPECT;
-      const dRow = y - bodyRow;
-      const haloDist = Math.sqrt(dCol * dCol + dRow * dRow) / HALO_RADIUS_ROWS;
-      const halo = Math.max(0, 1 - haloDist);
-      glowMix += haloStrength * halo * halo;
+      // Independent halos make twilight continuous: neither body replaces the other.
+      // Column offsets compensate for the tall character-cell aspect ratio.
+      const sunDCol = (x - sunCol) * CELL_ASPECT;
+      const sunDRow = y - sunRow;
+      const sunHaloDist = Math.sqrt(sunDCol * sunDCol + sunDRow * sunDRow) / HALO_RADIUS_ROWS;
+      const sunHalo = Math.max(0, 1 - sunHaloDist);
+      sunGlowMix += 0.5 * world.sunVisibility * sunHalo * sunHalo;
 
-      const mixed = mix(
+      const moonDCol = (x - moonCol) * CELL_ASPECT;
+      const moonDRow = y - moonRow;
+      const moonHaloDist = Math.sqrt(moonDCol * moonDCol + moonDRow * moonDRow) / HALO_RADIUS_ROWS;
+      const moonHalo = Math.max(0, 1 - moonHaloDist);
+      moonGlowMix +=
+        0.4 * world.moonVisibility * (0.35 + 0.65 * world.moonIllum) * moonHalo * moonHalo;
+
+      const sunMixed = mix(
         rgb,
-        haloColor,
-        ditherQuantize(Math.min(glowMix, 0.9), GLOW_LEVELS, threshold),
+        glow,
+        ditherQuantize(Math.min(sunGlowMix, 0.9), GLOW_LEVELS, threshold),
+      );
+      const mixed = mix(
+        sunMixed,
+        moonGlow,
+        ditherQuantize(Math.min(moonGlowMix, 0.75), GLOW_LEVELS, threshold),
       );
 
       const idx = (y * width + x) * 4;

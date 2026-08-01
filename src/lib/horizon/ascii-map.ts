@@ -31,6 +31,8 @@ export function classifyZoneGrid(
 
   const sunCenterX = Math.round(params.sunX * width) * 2 + 1;
   const sunCenterY = params.sunY * subHeight;
+  const moonCenterX = Math.round(params.moonX * width) * 2 + 1;
+  const moonCenterY = params.moonY * subHeight;
   const sunRadiusX = skyParams.sunRadius * 1.6 * 2;
   const sunRadiusY = skyParams.sunRadius * 4;
 
@@ -41,12 +43,19 @@ export function classifyZoneGrid(
   const starCells = new Uint8Array(width * starTopRows);
   for (let cy = 0; cy < starTopRows; cy++) {
     for (let cx = 0; cx < width; cx++) {
-      // Exclude cells near the sun — stars don't overlap with sun brightness
+      // Exclude cells near either visible body.
       const csx = cx * 2 + 1;
       const csy = cy * 4 + 2;
-      const sdx = (csx - sunCenterX) / sunRadiusX;
-      const sdy = (csy - sunCenterY) / sunRadiusY;
-      if (Math.sqrt(sdx * sdx + sdy * sdy) < 3.0) continue;
+      const sunDx = (csx - sunCenterX) / sunRadiusX;
+      const sunDy = (csy - sunCenterY) / sunRadiusY;
+      const moonDx = (csx - moonCenterX) / sunRadiusX;
+      const moonDy = (csy - moonCenterY) / sunRadiusY;
+      if (
+        (params.sunVisibility > 0.02 && Math.sqrt(sunDx * sunDx + sunDy * sunDy) < 3) ||
+        (params.moonVisibility > 0.02 && Math.sqrt(moonDx * moonDx + moonDy * moonDy) < 2.4)
+      ) {
+        continue;
+      }
 
       let hasMax = false;
       for (let dx = 0; dx < 2 && !hasMax; dx++) {
@@ -89,10 +98,13 @@ export function classifyZoneGrid(
       }
 
       if (centerSy < subHorizonRow) {
-        // Sky — check sun proximity (matches gradient.ts smooth falloff)
-        const dx = (centerSx - sunCenterX) / sunRadiusX;
-        const dy = (centerSy - sunCenterY) / sunRadiusY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        // Sky — classify the independently visible solar and lunar discs.
+        const sunDx = (centerSx - sunCenterX) / sunRadiusX;
+        const sunDy = (centerSy - sunCenterY) / sunRadiusY;
+        const sunDist = Math.sqrt(sunDx * sunDx + sunDy * sunDy);
+        const moonDx = (centerSx - moonCenterX) / sunRadiusX;
+        const moonDy = (centerSy - moonCenterY) / sunRadiusY;
+        const moonDist = Math.sqrt(moonDx * moonDx + moonDy * moonDy);
 
         const nearHorizon = centerSy > subHorizonRow - 12;
         const spraySource = nearHorizon
@@ -115,13 +127,33 @@ export function classifyZoneGrid(
           row.push("spray");
         } else if ((atmosphere?.rain ?? 0) > 0.24) {
           row.push("rain");
-        } else if (dist < 0.55 && (atmosphere?.cloud ?? 0) < 0.72) {
-          row.push(params.isNight ? "moon-core" : "sun-core");
-        } else if (dist < 1.45 && (atmosphere?.cloud ?? 0) < 0.58) {
-          row.push(params.isNight ? "moon" : "sun");
+        } else if (
+          sunDist < 0.55 &&
+          params.sunVisibility > 0.02 &&
+          (atmosphere?.cloud ?? 0) < 0.72
+        ) {
+          row.push("sun-core");
+        } else if (
+          sunDist < 1.45 &&
+          params.sunVisibility > 0.02 &&
+          (atmosphere?.cloud ?? 0) < 0.58
+        ) {
+          row.push("sun");
+        } else if (
+          moonDist < 0.55 &&
+          params.moonVisibility > 0.02 &&
+          (atmosphere?.cloud ?? 0) < 0.72
+        ) {
+          row.push("moon-core");
+        } else if (
+          moonDist < 1.45 &&
+          params.moonVisibility > 0.02 &&
+          (atmosphere?.cloud ?? 0) < 0.58
+        ) {
+          row.push("moon");
         } else if ((atmosphere?.cloud ?? 0) > 0.2) {
           row.push((atmosphere?.cloudLight ?? 0) > 0.58 ? "cloud-light" : "cloud-shadow");
-        } else if (dist < 2.8 && params.horizonGlow > 0.3) {
+        } else if (sunDist < 2.8 && params.horizonGlow > 0.3) {
           row.push("sky-glow");
         } else {
           const skyT = centerSy / subHorizonRow;
@@ -140,8 +172,8 @@ export function classifyZoneGrid(
       } else if (centerSy >= subHorizonRow && centerSy < subHorizonRow + 4) {
         const dxNorm = (centerSx - sunCenterX) / subWidth;
         const proximity = Math.exp(-(dxNorm * dxNorm) / (2 * 0.11 * 0.11));
-        if (proximity > 0.18 && !params.isNight) {
-          // The warm horizon band belongs to the sun; moonlit horizons stay cool
+        if (proximity * params.sunVisibility > 0.18) {
+          // The warm horizon band belongs to visible sunlight; moonlight stays cool.
           row.push("horizon");
         } else {
           row.push("water");
@@ -158,30 +190,43 @@ export function classifyZoneGrid(
           waveParams,
           weatherParams,
         );
-        const reflection = computeReflectionMetrics(
+        const sunReflection = computeReflectionMetrics(
           centerSx,
           waterT,
           sunCenterX,
-          params.bodyElevation,
+          params.sunElevation,
           subWidth,
           sample,
           waveParams,
           weatherParams,
         );
-        const reflectFade = Math.max(0, Math.min(1, (params.bodyElevation + 0.75) / 0.85));
-        const moonFade = params.isNight ? 0.35 + 0.65 * params.moonIllum : 1;
-        const reflectScore = reflection.reflectScore * reflectFade * moonFade;
+        const moonReflection = computeReflectionMetrics(
+          centerSx,
+          waterT,
+          moonCenterX,
+          params.moonElevation,
+          subWidth,
+          sample,
+          waveParams,
+          weatherParams,
+        );
+        const sunReflectScore = sunReflection.reflectScore * params.sunVisibility;
+        const moonReflectScore =
+          moonReflection.reflectScore *
+          params.moonVisibility *
+          (0.25 + 0.75 * params.moonIllum) *
+          0.62;
         const isCoolBreak = sample.crest < -0.18;
 
         if (sample.foam > 0.68 && waterT > 0.1) {
           row.push("foam");
-        } else if (params.isNight && reflectScore > 0.13) {
+        } else if (moonReflectScore > sunReflectScore && moonReflectScore > 0.08) {
           // Moonglint column reads as pale light, never amber
-          row.push(reflectScore > 0.28 ? "water-reflect-cool" : "water");
-        } else if (!params.isNight && reflectScore > 0.06) {
-          if (reflectScore > 0.28) {
+          row.push(moonReflectScore > 0.2 ? "water-reflect-cool" : "water");
+        } else if (sunReflectScore > 0.06) {
+          if (sunReflectScore > 0.28) {
             row.push(isCoolBreak ? "water-reflect-warm" : "water-reflect");
-          } else if (reflectScore > 0.13) {
+          } else if (sunReflectScore > 0.13) {
             row.push(isCoolBreak ? "water-reflect-cool" : "water-reflect-warm");
           } else {
             row.push(isCoolBreak ? "water" : "water-reflect-cool");

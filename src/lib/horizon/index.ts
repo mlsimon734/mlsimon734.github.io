@@ -16,6 +16,7 @@ export {
   DEFAULT_WEATHER_PARAMS,
 } from "./types";
 export type { AsciiCell, GridConfig, WaveParams, SkyParams, WeatherParams } from "./types";
+export type { WeatherSource } from "./weather";
 
 // Zone-specific character gradients (dark → bright)
 const GLOW_GRADIENT = "  ·∙:;";
@@ -237,11 +238,8 @@ export function generateHorizon(
     grid.push(row);
   }
 
-  // Bilateral symmetry mirroring for sun disc and glow.
-  // Skipped at night: the moon's phase crescent is deliberately asymmetric.
-  if (params.isNight) {
-    return grid;
-  }
+  // Bilateral symmetry mirroring for the solar disc and glow only. The lunar
+  // crescent remains deliberately asymmetric when both bodies share twilight.
   const charHorizonRow = Math.floor(config.height * 0.65);
   const sunMirrorTop = Math.max(0, sunCenterCy - sunRadiusCy * 2);
   const sunMirrorBottom = Math.min(charHorizonRow, sunCenterCy + sunRadiusCy + 1);

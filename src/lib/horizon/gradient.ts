@@ -39,6 +39,8 @@ export function generateSkyBuffer(
   // the semicircle is symmetric at the character level
   const sunCenterX = Math.round(params.sunX * config.width) * 2 + 1;
   const sunCenterY = params.sunY * subHeight;
+  const moonCenterX = Math.round(params.moonX * config.width) * 2 + 1;
+  const moonCenterY = params.moonY * subHeight;
   // Aspect correction for sub-pixel grid: each char cell is 2×4 sub-pixels
   // Horizontal: sunRadius * 1.6 (aspect) * 2 (sub-pixel cols per char)
   const sunRadiusX = skyParams.sunRadius * 1.6 * 2;
@@ -65,50 +67,62 @@ export function generateSkyBuffer(
           brightness += params.horizonGlow * 50 * glowT * lateral;
         }
 
-        const dx = (x - sunCenterX) / sunRadiusX;
-        const dy = (y - sunCenterY) / sunRadiusY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (params.isNight) {
-          // Moon disc — phase terminator masks the unlit side. A point on the
-          // projected disc is lit when it sits sunward of the terminator
-          // ellipse x = cos(2π·phase)·√(1−y²).
-          if (dist < 2.2) {
-            const litLimit =
-              Math.cos(params.moonPhase * 2 * Math.PI) * Math.sqrt(Math.max(0, 1 - dy * dy));
-            const lit = params.moonPhase < 0.5 ? dx >= litLimit : dx <= -litLimit;
-            let moonBrightness = 0;
-            if (dist < 1 && lit) {
-              moonBrightness = dist < 0.78 ? 235 : 235 * (1 - (dist - 0.78) / 0.22);
-            } else if (dist < 1) {
-              // Faint earthshine keeps the dark limb barely legible
-              moonBrightness = 34;
-            }
-            const halo = Math.max(0, 1 - dist / 2.2);
-            brightness = Math.max(brightness, moonBrightness, halo * halo * 46 * params.moonIllum);
-          }
-        } else if (dist < 3.0) {
+        const sunDx = (x - sunCenterX) / sunRadiusX;
+        const sunDy = (y - sunCenterY) / sunRadiusY;
+        const sunDist = Math.sqrt(sunDx * sunDx + sunDy * sunDy);
+        if (sunDist < 3 && params.sunVisibility > 0) {
           // Sun disc — solid core with smooth quadratic edge
           let sunBrightness: number;
-          if (dist < 0.62) {
+          if (sunDist < 0.62) {
             // Keep only the very center solid; the edge carries the circle.
             sunBrightness = 255;
           } else {
-            const t = Math.min((dist - 0.62) / 0.88, 1);
+            const t = Math.min((sunDist - 0.62) / 0.88, 1);
             sunBrightness = 255 * (1 - t * t);
           }
           // Glow halo extends further
           const glowStrength = Math.max(0.3, params.horizonGlow);
-          const glow = Math.max(0, 1 - dist / 3.0);
-          const glowBrightness = glow * glow * 80 * glowStrength;
-          brightness = Math.max(brightness, sunBrightness + glowBrightness);
+          const glow = Math.max(0, 1 - sunDist / 3.0);
+          const glowBrightness = glow * glow * 80 * glowStrength * params.sunVisibility;
+          brightness = Math.max(brightness, sunBrightness * params.sunVisibility + glowBrightness);
+        }
+
+        const moonDx = (x - moonCenterX) / sunRadiusX;
+        const moonDy = (y - moonCenterY) / sunRadiusY;
+        const moonDist = Math.sqrt(moonDx * moonDx + moonDy * moonDy);
+        // Phase terminator masks the unlit side. Atmospheric extinction and
+        // twilight scale the whole disc continuously through moonVisibility.
+        if (moonDist < 2.2 && params.moonVisibility > 0) {
+          const litLimit =
+            Math.cos(params.moonPhase * 2 * Math.PI) * Math.sqrt(Math.max(0, 1 - moonDy * moonDy));
+          const lit = params.moonPhase < 0.5 ? moonDx >= litLimit : moonDx <= -litLimit;
+          let moonBrightness = 0;
+          if (moonDist < 1 && lit) {
+            moonBrightness = moonDist < 0.78 ? 235 : 235 * (1 - (moonDist - 0.78) / 0.22);
+          } else if (moonDist < 1) {
+            // Faint earthshine keeps the dark limb barely legible.
+            moonBrightness = 34 * (0.3 + 0.7 * params.moonIllum);
+          }
+          const halo = Math.max(0, 1 - moonDist / 2.2);
+          brightness = Math.max(
+            brightness,
+            moonBrightness * params.moonVisibility,
+            halo * halo * 46 * params.moonIllum * params.moonVisibility,
+          );
         }
       } else if (y >= horizonRow && y < horizonRow + 4) {
         // --- Horizon band --- blends from horizon glow into water+reflection
         const bandT = (y - horizonRow) / 4;
-        const dxNorm = (x - sunCenterX) / subWidth;
-        const gauss = Math.exp(-(dxNorm * dxNorm) / (2 * 0.11 * 0.11));
+        const sunDxNorm = (x - sunCenterX) / subWidth;
+        const moonDxNorm = (x - moonCenterX) / subWidth;
+        const sunGauss =
+          Math.exp(-(sunDxNorm * sunDxNorm) / (2 * 0.11 * 0.11)) * params.sunVisibility;
+        const moonGauss =
+          Math.exp(-(moonDxNorm * moonDxNorm) / (2 * 0.09 * 0.09)) *
+          params.moonVisibility *
+          (0.25 + 0.75 * params.moonIllum);
         const peak = 158 + params.horizonGlow * 28;
-        const horizonBright = 86 + (peak - 86) * gauss;
+        const horizonBright = 86 + (peak - 86) * sunGauss + 38 * moonGauss;
         const sample = sampleOceanSurface(
           x,
           bandT * 0.08,
@@ -118,18 +132,33 @@ export function generateSkyBuffer(
           waveParams,
           weatherParams,
         );
-        const reflection = computeReflectionMetrics(
+        const sunReflection = computeReflectionMetrics(
           x,
           bandT * 0.08,
           sunCenterX,
-          params.bodyElevation,
+          params.sunElevation,
+          subWidth,
+          sample,
+          waveParams,
+          weatherParams,
+        );
+        const moonReflection = computeReflectionMetrics(
+          x,
+          bandT * 0.08,
+          moonCenterX,
+          params.moonElevation,
           subWidth,
           sample,
           waveParams,
           weatherParams,
         );
         const horizonReflect =
-          36 * Math.max(0.25, params.horizonGlow) * Math.max(reflection.reflectScore, gauss * 0.16);
+          36 *
+          Math.max(
+            Math.max(0.25, params.horizonGlow) * sunReflection.reflectScore * params.sunVisibility,
+            moonReflection.reflectScore * moonGauss * 0.65,
+            sunGauss * 0.16,
+          );
         const bandShimmer = 10 * (sample.glitter - 0.5) * 2;
         const waterBright = 126 + 8 * sample.crest + horizonReflect + bandShimmer;
         const blend = bandT * bandT;
@@ -147,21 +176,37 @@ export function generateSkyBuffer(
           waveParams,
           weatherParams,
         );
-        const reflection = computeReflectionMetrics(
+        const sunReflection = computeReflectionMetrics(
           x,
           waterT,
           sunCenterX,
-          params.bodyElevation,
+          params.sunElevation,
+          subWidth,
+          sample,
+          waveParams,
+          weatherParams,
+        );
+        const moonReflection = computeReflectionMetrics(
+          x,
+          waterT,
+          moonCenterX,
+          params.moonElevation,
           subWidth,
           sample,
           waveParams,
           weatherParams,
         );
         const twilight = Math.max(0, (params.sunElevation + 0.5) / 1.5);
-        const moonlight = params.isNight ? 0.45 * params.moonIllum : 0;
+        const moonlight = 0.45 * params.moonIllum * params.moonVisibility;
         const glowFactor = Math.max(0.15, params.horizonGlow, twilight * 0.6, moonlight);
         const amplitude = lerp(14, 32, Math.pow(waterT, 0.9));
-        const reflectBrightness = 132 * glowFactor * reflection.reflectScore;
+        const sunReflect = sunReflection.reflectScore * params.sunVisibility * glowFactor;
+        const moonReflect =
+          moonReflection.reflectScore *
+          params.moonVisibility *
+          (0.25 + 0.75 * params.moonIllum) *
+          0.62;
+        const reflectBrightness = 132 * Math.max(sunReflect, moonReflect);
         const shimmerBrightness = lerp(8, 18, waterT) * (sample.glitter - 0.5) * 2;
         brightness = clamp(
           waterBase + amplitude * sample.crest + reflectBrightness + shimmerBrightness,
@@ -184,11 +229,18 @@ export function generateSkyBuffer(
   for (let i = 0; i < starCount; i++) {
     const cx = Math.floor(rng() * config.width);
     const cy = Math.floor(rng() * starTopRows);
-    // Keep stars away from the sun/moon disc — a 255 block inside the moon
+    // Keep stars away from either visible disc — a 255 block inside the moon
     // would read as a bright square on the unlit side of the crescent.
-    const sdx = (cx * 2 + 1 - sunCenterX) / sunRadiusX;
-    const sdy = (cy * 4 + 2 - sunCenterY) / sunRadiusY;
-    if (Math.sqrt(sdx * sdx + sdy * sdy) < 3.0) continue;
+    const sunSdx = (cx * 2 + 1 - sunCenterX) / sunRadiusX;
+    const sunSdy = (cy * 4 + 2 - sunCenterY) / sunRadiusY;
+    const moonSdx = (cx * 2 + 1 - moonCenterX) / sunRadiusX;
+    const moonSdy = (cy * 4 + 2 - moonCenterY) / sunRadiusY;
+    if (
+      (params.sunVisibility > 0.02 && Math.sqrt(sunSdx * sunSdx + sunSdy * sunSdy) < 3) ||
+      (params.moonVisibility > 0.02 && Math.sqrt(moonSdx * moonSdx + moonSdy * moonSdy) < 2.4)
+    ) {
+      continue;
+    }
     // Fill entire 2×4 sub-pixel block with 255
     for (let dx = 0; dx < 2; dx++) {
       for (let dy = 0; dy < 4; dy++) {

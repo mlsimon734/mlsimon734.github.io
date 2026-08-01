@@ -2,13 +2,17 @@ export interface WorldParams {
   hourAngle: number;
   sunElevation: number;
   solarAzimuth: number;
-  /** Position of the visible celestial body — the sun by day, the moon at night. */
+  /** Independent solar position and optical visibility. */
   sunX: number;
   sunY: number;
-  /** Elevation of the visible body; drives reflection strength on the water. */
-  bodyElevation: number;
-  /** True when the sun is well below the horizon and the moon takes over. */
-  isNight: boolean;
+  sunVisibility: number;
+  /** Independent lunar position, elevation, and atmospheric visibility. */
+  moonX: number;
+  moonY: number;
+  moonElevation: number;
+  moonVisibility: number;
+  /** Continuous daylight-to-night blend used by the atmosphere. */
+  nightFactor: number;
   /** Lunar phase 0–1: 0 = new, 0.5 = full. */
   moonPhase: number;
   /** Illuminated fraction of the lunar disc, 0–1. */

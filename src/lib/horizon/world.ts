@@ -49,11 +49,13 @@ export function computeMoonPhase(now: number): number {
   return (((days / SYNODIC_MONTH_DAYS) % 1) + 1) % 1;
 }
 
-// Civil twilight is kept sun-led; deeper night hands the visible arc to the moon.
-const NIGHT_ELEVATION = -0.25;
-
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function smoothstep(edge0: number, edge1: number, value: number): number {
+  const t = clamp((value - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
 }
 
 function timezoneOffsetHours(now: number, date: ReturnType<typeof getLosAngelesDateParts>): number {
@@ -137,8 +139,14 @@ export function computeWorldParams(
   const moonDeclination =
     -0.16 * solarDeclination + 0.12 * Math.sin(moonPhase * 2 * Math.PI + dayOfYear * 0.075);
   const moon = positionOnSky(moonHourAngle, moonDeclination);
-  const isNight = sunElevation < NIGHT_ELEVATION;
-  const body = isNight ? moon : sun;
+
+  // The two bodies remain independent. Their apparent intensity fades through
+  // the horizon and twilight instead of switching at an arbitrary clock time.
+  const sunVisibility = smoothstep(-0.09, 0.025, sunElevation);
+  const nightFactor = 1 - smoothstep(-0.28, 0.12, sunElevation);
+  const moonAltitudeVisibility = smoothstep(-0.1, 0.045, moon.elevation);
+  const moonTwilightVisibility = 1 - smoothstep(-0.18, 0.15, sunElevation);
+  const moonVisibility = moonAltitudeVisibility * moonTwilightVisibility;
 
   // Stars visible when sun is near/below horizon
   const starDensity = clamp((-sunElevation + 0.08) / 0.72, 0, 1);
@@ -150,10 +158,14 @@ export function computeWorldParams(
     hourAngle,
     sunElevation,
     solarAzimuth: (sun.azimuth * 180) / Math.PI,
-    sunX: body.x,
-    sunY: body.y,
-    bodyElevation: body.elevation,
-    isNight,
+    sunX: sun.x,
+    sunY: sun.y,
+    sunVisibility,
+    moonX: moon.x,
+    moonY: moon.y,
+    moonElevation: moon.elevation,
+    moonVisibility,
+    nightFactor,
     moonPhase,
     moonIllum,
     seasonFactor,

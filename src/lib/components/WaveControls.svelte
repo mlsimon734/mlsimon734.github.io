@@ -7,6 +7,7 @@
     type WaveParams,
     type SkyParams,
     type WeatherParams,
+    type WeatherSource,
   } from "$lib/horizon";
   import { getLosAngelesHours } from "$lib/horizon/world";
 
@@ -14,13 +15,34 @@
     params = $bindable(),
     skyParams = $bindable(),
     weatherParams = $bindable(),
-  }: { params: WaveParams; skyParams: SkyParams; weatherParams: WeatherParams } = $props();
+    weatherSource,
+    onRequestLiveWeather,
+    onManualWeather,
+  }: {
+    params: WaveParams;
+    skyParams: SkyParams;
+    weatherParams: WeatherParams;
+    weatherSource: WeatherSource;
+    onRequestLiveWeather: () => void;
+    onManualWeather: () => void;
+  } = $props();
   let open = $state(false);
   let reducedMotion = $state(false);
   let currentLaTime = $state(getLosAngelesHours());
 
   const sceneTime = $derived(wrapHours(currentLaTime + skyParams.timeOffset));
   const compass = $derived(compassPoint(weatherParams.windDirection));
+  const weatherSourceLabel = $derived(
+    weatherSource === "live"
+      ? "LA live"
+      : weatherSource === "cached"
+        ? "LA cached"
+        : weatherSource === "loading"
+          ? "LA syncing"
+          : weatherSource === "fallback"
+            ? "LA fallback"
+            : "manual",
+  );
 
   $effect(() => {
     const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -77,12 +99,14 @@
   }
 
   function reset() {
+    onManualWeather();
     params = { ...DEFAULT_WAVE_PARAMS };
     skyParams = { ...DEFAULT_SKY_PARAMS };
     weatherParams = { ...DEFAULT_WEATHER_PARAMS };
   }
 
   function applyPreset(preset: "still" | "pacific" | "squall") {
+    onManualWeather();
     if (preset === "still") {
       params = {
         ...DEFAULT_WAVE_PARAMS,
@@ -106,20 +130,20 @@
     if (preset === "squall") {
       params = {
         ...DEFAULT_WAVE_PARAMS,
-        swellScale: 30,
-        chopScale: 21,
-        crestSharpness: 1.8,
-        reflectionSharpness: 1.65,
-        shimmer: 1.35,
-        speed: 0.46,
+        swellScale: 27,
+        chopScale: 17,
+        crestSharpness: 1.5,
+        reflectionSharpness: 1.8,
+        shimmer: 1,
+        speed: 0.4,
       };
       weatherParams = {
         ...DEFAULT_WEATHER_PARAMS,
-        windSpeed: 18,
+        windSpeed: 15,
         windDirection: 292,
-        cloudCover: 0.82,
-        humidity: 0.9,
-        precipitation: 0.72,
+        cloudCover: 0.58,
+        humidity: 0.82,
+        precipitation: 0.38,
       };
       return;
     }
@@ -130,7 +154,7 @@
 
 <div class="wave-controls font-mono">
   <button class="toggle" onclick={() => (open = !open)} aria-expanded={open}>
-    <span class="comment-prefix">//</span> model · {compass}
+    <span class="comment-prefix">//</span> model · {weatherSourceLabel} · {compass}
     {weatherParams.windSpeed.toFixed(1)}
     m/s · {Math.round(weatherParams.cloudCover * 100)}% cloud {open ? "▴" : "▾"}
   </button>
@@ -139,6 +163,12 @@
     <div class="panel" transition:slide={{ duration: reducedMotion ? 0 : 200 }}>
       <div class="preset-row" role="group" aria-labelledby="weather-presets-label">
         <span id="weather-presets-label"><span class="comment-prefix">//</span> conditions</span>
+        <button
+          class:active={weatherSource !== "manual" && weatherSource !== "fallback"}
+          onclick={onRequestLiveWeather}
+          aria-pressed={weatherSource !== "manual" && weatherSource !== "fallback"}
+          disabled={weatherSource === "loading"}>sync LA</button
+        >
         <button onclick={() => applyPreset("still")}>still water</button>
         <button onclick={() => applyPreset("pacific")}>living pacific</button>
         <button onclick={() => applyPreset("squall")}>squall line</button>
@@ -183,6 +213,7 @@
                 max="22"
                 step="0.5"
                 bind:value={weatherParams.windSpeed}
+                oninput={onManualWeather}
               />
             </label>
             <label class="slider-row">
@@ -196,6 +227,7 @@
                 max="359"
                 step="1"
                 bind:value={weatherParams.windDirection}
+                oninput={onManualWeather}
               />
             </label>
             <label class="slider-row">
@@ -210,6 +242,7 @@
                 max="1"
                 step="0.01"
                 bind:value={weatherParams.cloudCover}
+                oninput={onManualWeather}
               />
             </label>
             <label class="slider-row">
@@ -218,7 +251,14 @@
                   >{Math.round(weatherParams.humidity * 100)}%</span
                 ></span
               >
-              <input type="range" min="0" max="1" step="0.01" bind:value={weatherParams.humidity} />
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                bind:value={weatherParams.humidity}
+                oninput={onManualWeather}
+              />
             </label>
             <label class="slider-row">
               <span class="slider-label"
@@ -232,6 +272,7 @@
                 max="1"
                 step="0.01"
                 bind:value={weatherParams.precipitation}
+                oninput={onManualWeather}
               />
             </label>
             <label class="slider-row">
@@ -388,6 +429,16 @@
     color: var(--color-theme-heading);
     border-color: var(--color-theme-console-accent);
     background: color-mix(in srgb, var(--color-theme-console-accent) 8%, transparent);
+  }
+
+  .preset-row button.active {
+    color: var(--color-theme-heading);
+    border-color: var(--color-theme-console-accent);
+  }
+
+  .preset-row button:disabled {
+    cursor: wait;
+    opacity: 0.62;
   }
 
   .parameter-groups {
