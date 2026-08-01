@@ -1,6 +1,7 @@
 export interface WorldParams {
   hourAngle: number;
   sunElevation: number;
+  solarAzimuth: number;
   /** Position of the visible celestial body — the sun by day, the moon at night. */
   sunX: number;
   sunY: number;
@@ -25,6 +26,10 @@ export interface AsciiCell {
     | "star"
     | "sky"
     | "sky-glow"
+    | "cloud-light"
+    | "cloud-shadow"
+    | "rain"
+    | "spray"
     | "sun-core"
     | "sun"
     | "moon-core"
@@ -34,6 +39,7 @@ export interface AsciiCell {
     | "water-reflect"
     | "water-reflect-warm"
     | "water-reflect-cool"
+    | "foam"
     | "water-far";
   twinkleDelay?: number;
 }
@@ -66,6 +72,24 @@ export const DEFAULT_SKY_PARAMS: SkyParams = {
   timeOffset: 0,
   glowStrength: 1.0,
   sunRadius: 4.0,
+};
+
+export interface WeatherParams {
+  /** Wind speed in metres per second. Couples the chop, foam, cloud advection, and rain. */
+  windSpeed: number;
+  /** Direction the weather travels toward, in screen-compass degrees. */
+  windDirection: number;
+  cloudCover: number;
+  humidity: number;
+  precipitation: number;
+}
+
+export const DEFAULT_WEATHER_PARAMS: WeatherParams = {
+  windSpeed: 9.5,
+  windDirection: 252,
+  cloudCover: 0.34,
+  humidity: 0.58,
+  precipitation: 0.06,
 };
 
 export interface GridConfig {

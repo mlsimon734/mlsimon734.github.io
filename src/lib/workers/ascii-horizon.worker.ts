@@ -1,6 +1,12 @@
 /// <reference lib="webworker" />
 
-import { generateHorizon, type GridConfig, type SkyParams, type WaveParams } from "$lib/horizon";
+import {
+  generateHorizon,
+  type GridConfig,
+  type SkyParams,
+  type WaveParams,
+  type WeatherParams,
+} from "$lib/horizon";
 import { renderBackgroundPixels } from "$lib/horizon/background";
 import { encodeRuns, type MonoMetrics, type ZonePalette } from "$lib/horizon/render";
 import { computeWorldParams } from "$lib/horizon/world";
@@ -21,6 +27,7 @@ interface SyncMessage {
   active: boolean;
   waveParams: WaveParams;
   skyParams: SkyParams;
+  weatherParams: WeatherParams;
 }
 
 type WorkerMessage = InitMessage | SyncMessage;
@@ -36,6 +43,7 @@ interface WorkerState {
   active: boolean;
   waveParams: WaveParams | null;
   skyParams: SkyParams | null;
+  weatherParams: WeatherParams | null;
   waterTime: number;
   animationStart: number;
   timerId: number | null;
@@ -54,6 +62,7 @@ const state: WorkerState = {
   active: false,
   waveParams: null,
   skyParams: null,
+  weatherParams: null,
   waterTime: 0,
   animationStart: 0,
   timerId: null,
@@ -110,6 +119,7 @@ function paintBackground(
   config: GridConfig,
   palette: ZonePalette,
   world: WorldParams,
+  weatherParams: WeatherParams,
 ) {
   if (!bgTile || bgTile.width !== config.width || bgTile.height !== config.height) {
     bgTile = new OffscreenCanvas(config.width, config.height);
@@ -117,7 +127,7 @@ function paintBackground(
   }
   if (!bgTileCtx) return;
 
-  const pixels = renderBackgroundPixels(config, palette, world);
+  const pixels = renderBackgroundPixels(config, palette, world, weatherParams);
   bgTileCtx.putImageData(new ImageData(pixels, config.width, config.height), 0, 0);
 
   ctx.imageSmoothingEnabled = false;
@@ -131,7 +141,8 @@ function render() {
     !state.metrics ||
     !state.palette ||
     !state.waveParams ||
-    !state.skyParams
+    !state.skyParams ||
+    !state.weatherParams
   ) {
     return;
   }
@@ -144,11 +155,12 @@ function render() {
     waterTime,
     state.waveParams,
     state.skyParams,
+    state.weatherParams,
   );
   const runs = encodeRuns(grid);
   const { ctx } = state;
 
-  paintBackground(ctx, state.metrics, state.config, state.palette, world);
+  paintBackground(ctx, state.metrics, state.config, state.palette, world, state.weatherParams);
   ctx.font = state.metrics.font;
   ctx.textBaseline = "top";
 
@@ -184,6 +196,7 @@ function syncState(message: SyncMessage) {
   state.palette = message.palette;
   state.waveParams = message.waveParams;
   state.skyParams = message.skyParams;
+  state.weatherParams = message.weatherParams;
   state.reducedMotion = message.reducedMotion;
   state.waterTime = state.reducedMotion ? 0 : currentWaterTime;
 

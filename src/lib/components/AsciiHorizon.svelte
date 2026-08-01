@@ -2,22 +2,25 @@
   import {
     DEFAULT_WAVE_PARAMS,
     DEFAULT_SKY_PARAMS,
+    DEFAULT_WEATHER_PARAMS,
     type WaveParams,
     type SkyParams,
+    type WeatherParams,
   } from "$lib/horizon";
   import AsciiHorizonWorkerCanvas from "./AsciiHorizonWorkerCanvas.svelte";
   import WaveControls from "./WaveControls.svelte";
 
   let waveParams: WaveParams = $state({ ...DEFAULT_WAVE_PARAMS });
   let skyParams: SkyParams = $state({ ...DEFAULT_SKY_PARAMS });
+  let weatherParams: WeatherParams = $state({ ...DEFAULT_WEATHER_PARAMS });
 </script>
 
 <div class="ascii-horizon-stack">
   <div class="horizon-card horizon-scene">
-    <AsciiHorizonWorkerCanvas {waveParams} {skyParams} />
+    <AsciiHorizonWorkerCanvas {waveParams} {skyParams} {weatherParams} />
   </div>
 
-  <WaveControls bind:params={waveParams} bind:skyParams />
+  <WaveControls bind:params={waveParams} bind:skyParams bind:weatherParams />
 </div>
 
 <style>

@@ -10,6 +10,10 @@ export interface ZonePalette {
   star: string;
   sky: string;
   "sky-glow": string;
+  "cloud-light": string;
+  "cloud-shadow": string;
+  rain: string;
+  spray: string;
   "sun-core": string;
   sun: string;
   "moon-core": string;
@@ -19,12 +23,15 @@ export interface ZonePalette {
   "water-reflect": string;
   "water-reflect-warm": string;
   "water-reflect-cool": string;
+  foam: string;
   "water-far": string;
   /* Painted scene background ramp (not glyph zones) */
   "bg-sky-top": string;
   "bg-sky-low": string;
   "bg-glow": string;
   "bg-moon-glow": string;
+  "bg-cloud-light": string;
+  "bg-cloud-shadow": string;
   "bg-water-top": string;
   "bg-water-deep": string;
 }
@@ -45,6 +52,10 @@ const ZONE_VARIABLES: Record<AsciiCell["zone"], string> = {
   star: "--color-horizon-star",
   sky: "--color-horizon-sky",
   "sky-glow": "--color-horizon-sky-glow",
+  "cloud-light": "--color-horizon-cloud-light",
+  "cloud-shadow": "--color-horizon-cloud-shadow",
+  rain: "--color-horizon-rain",
+  spray: "--color-horizon-spray",
   "sun-core": "--color-horizon-sun-core",
   sun: "--color-horizon-sun",
   "moon-core": "--color-horizon-moon-core",
@@ -54,6 +65,7 @@ const ZONE_VARIABLES: Record<AsciiCell["zone"], string> = {
   "water-reflect": "--color-horizon-water-reflect",
   "water-reflect-warm": "--color-horizon-water-reflect-warm",
   "water-reflect-cool": "--color-horizon-water-reflect-cool",
+  foam: "--color-horizon-foam",
   "water-far": "--color-horizon-water-far",
 };
 
@@ -62,6 +74,8 @@ const BACKGROUND_VARIABLES = {
   "bg-sky-low": "--color-horizon-bg-sky-low",
   "bg-glow": "--color-horizon-bg-glow",
   "bg-moon-glow": "--color-horizon-bg-moon-glow",
+  "bg-cloud-light": "--color-horizon-bg-cloud-light",
+  "bg-cloud-shadow": "--color-horizon-bg-cloud-shadow",
   "bg-water-top": "--color-horizon-bg-water-top",
   "bg-water-deep": "--color-horizon-bg-water-deep",
 } as const;
@@ -91,6 +105,10 @@ export function resolveZonePalette(styles: CSSStyleDeclaration): ZonePalette {
     star: styles.getPropertyValue(ZONE_VARIABLES.star).trim(),
     sky: styles.getPropertyValue(ZONE_VARIABLES.sky).trim(),
     "sky-glow": styles.getPropertyValue(ZONE_VARIABLES["sky-glow"]).trim(),
+    "cloud-light": styles.getPropertyValue(ZONE_VARIABLES["cloud-light"]).trim(),
+    "cloud-shadow": styles.getPropertyValue(ZONE_VARIABLES["cloud-shadow"]).trim(),
+    rain: styles.getPropertyValue(ZONE_VARIABLES.rain).trim(),
+    spray: styles.getPropertyValue(ZONE_VARIABLES.spray).trim(),
     "sun-core": styles.getPropertyValue(ZONE_VARIABLES["sun-core"]).trim(),
     sun: styles.getPropertyValue(ZONE_VARIABLES.sun).trim(),
     "moon-core": styles.getPropertyValue(ZONE_VARIABLES["moon-core"]).trim(),
@@ -100,11 +118,14 @@ export function resolveZonePalette(styles: CSSStyleDeclaration): ZonePalette {
     "water-reflect": styles.getPropertyValue(ZONE_VARIABLES["water-reflect"]).trim(),
     "water-reflect-warm": styles.getPropertyValue(ZONE_VARIABLES["water-reflect-warm"]).trim(),
     "water-reflect-cool": styles.getPropertyValue(ZONE_VARIABLES["water-reflect-cool"]).trim(),
+    foam: styles.getPropertyValue(ZONE_VARIABLES.foam).trim(),
     "water-far": styles.getPropertyValue(ZONE_VARIABLES["water-far"]).trim(),
     "bg-sky-top": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-sky-top"]).trim(),
     "bg-sky-low": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-sky-low"]).trim(),
     "bg-glow": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-glow"]).trim(),
     "bg-moon-glow": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-moon-glow"]).trim(),
+    "bg-cloud-light": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-cloud-light"]).trim(),
+    "bg-cloud-shadow": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-cloud-shadow"]).trim(),
     "bg-water-top": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-water-top"]).trim(),
     "bg-water-deep": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-water-deep"]).trim(),
   };

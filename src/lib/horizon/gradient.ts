@@ -1,7 +1,7 @@
 import { intBuffer, GRAY8 } from "@thi.ng/pixel";
 import type { IntBuffer } from "@thi.ng/pixel";
-import type { WorldParams, GridConfig, WaveParams, SkyParams } from "./types";
-import { DEFAULT_WAVE_PARAMS, DEFAULT_SKY_PARAMS } from "./types";
+import type { WorldParams, GridConfig, WaveParams, SkyParams, WeatherParams } from "./types";
+import { DEFAULT_WAVE_PARAMS, DEFAULT_SKY_PARAMS, DEFAULT_WEATHER_PARAMS } from "./types";
 import { computeReflectionMetrics, sampleOceanSurface } from "./waves";
 
 /** Mulberry32 PRNG — deterministic, ~8 lines */
@@ -28,6 +28,7 @@ export function generateSkyBuffer(
   config: GridConfig,
   waveParams: WaveParams = DEFAULT_WAVE_PARAMS,
   skyParams: SkyParams = DEFAULT_SKY_PARAMS,
+  weatherParams: WeatherParams = DEFAULT_WEATHER_PARAMS,
 ): { original: IntBuffer; dithered: IntBuffer } {
   const { subWidth, subHeight } = config;
   const buf = intBuffer(subWidth, subHeight, GRAY8);
@@ -115,6 +116,7 @@ export function generateSkyBuffer(
           subWidth,
           subHeight,
           waveParams,
+          weatherParams,
         );
         const reflection = computeReflectionMetrics(
           x,
@@ -124,6 +126,7 @@ export function generateSkyBuffer(
           subWidth,
           sample,
           waveParams,
+          weatherParams,
         );
         const horizonReflect =
           36 * Math.max(0.25, params.horizonGlow) * Math.max(reflection.reflectScore, gauss * 0.16);
@@ -142,6 +145,7 @@ export function generateSkyBuffer(
           subWidth,
           subHeight,
           waveParams,
+          weatherParams,
         );
         const reflection = computeReflectionMetrics(
           x,
@@ -151,6 +155,7 @@ export function generateSkyBuffer(
           subWidth,
           sample,
           waveParams,
+          weatherParams,
         );
         const twilight = Math.max(0, (params.sunElevation + 0.5) / 1.5);
         const moonlight = params.isNight ? 0.45 * params.moonIllum : 0;

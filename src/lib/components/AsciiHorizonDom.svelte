@@ -7,6 +7,7 @@
     type AsciiCell,
     type WaveParams,
     type SkyParams,
+    type WeatherParams,
   } from "$lib/horizon";
   import { computeWorldParams } from "$lib/horizon/world";
   import { renderBackgroundPixels } from "$lib/horizon/background";
@@ -18,9 +19,11 @@
   let {
     waveParams,
     skyParams,
+    weatherParams,
   }: {
     waveParams: WaveParams;
     skyParams: SkyParams;
+    weatherParams: WeatherParams;
   } = $props();
 
   let container: HTMLDivElement | undefined = $state();
@@ -39,11 +42,13 @@
 
   const config = $derived(isDesktop ? DESKTOP_CONFIG : MOBILE_CONFIG);
   const shouldAnimate = $derived(!reducedMotion && inViewport && pageVisible);
-  const grid = $derived(generateHorizon(now, config, waterTime, waveParams, skyParams));
+  const grid = $derived(
+    generateHorizon(now, config, waterTime, waveParams, skyParams, weatherParams),
+  );
   const spans = $derived(
     encodeRuns(grid) as { chars: string; zone: AsciiCell["zone"]; twinkleDelay?: number }[][],
   );
-  const world = $derived(computeWorldParams(now, 0, skyParams));
+  const world = $derived(computeWorldParams(now, waterTime, skyParams));
   // Scale the fixed-font art block down to the container so narrow cards see
   // the whole scene (matching the canvas renderers) instead of clipping it.
   const scale = $derived(naturalW > 0 && containerW > 0 ? Math.min(1, containerW / naturalW) : 1);
@@ -134,7 +139,7 @@
     if (!container) return;
 
     const palette = resolveZonePalette(getComputedStyle(container));
-    const pixels = renderBackgroundPixels(config, palette, world);
+    const pixels = renderBackgroundPixels(config, palette, world, weatherParams);
     const tile = document.createElement("canvas");
     tile.width = config.width;
     tile.height = config.height;
@@ -233,6 +238,22 @@
     color: var(--color-horizon-sky-glow);
   }
 
+  .cloud-light {
+    color: var(--color-horizon-cloud-light);
+  }
+
+  .cloud-shadow {
+    color: var(--color-horizon-cloud-shadow);
+  }
+
+  .rain {
+    color: var(--color-horizon-rain);
+  }
+
+  .spray {
+    color: var(--color-horizon-spray);
+  }
+
   .sun-core {
     color: var(--color-horizon-sun-core);
   }
@@ -267,6 +288,10 @@
 
   .water-reflect-cool {
     color: var(--color-horizon-water-reflect-cool);
+  }
+
+  .foam {
+    color: var(--color-horizon-foam);
   }
 
   .water-far {

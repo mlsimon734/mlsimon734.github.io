@@ -1,6 +1,14 @@
 import type { IntBuffer } from "@thi.ng/pixel";
-import type { WorldParams, GridConfig, AsciiCell, SkyParams, WaveParams } from "./types";
-import { DEFAULT_WAVE_PARAMS } from "./types";
+import type {
+  WorldParams,
+  GridConfig,
+  AsciiCell,
+  SkyParams,
+  WaveParams,
+  WeatherParams,
+} from "./types";
+import { DEFAULT_WAVE_PARAMS, DEFAULT_WEATHER_PARAMS } from "./types";
+import { sampleAtmosphere, weatherPulse } from "./atmosphere";
 import { computeReflectionMetrics, sampleOceanSurface } from "./waves";
 
 type Zone = AsciiCell["zone"];
@@ -15,6 +23,7 @@ export function classifyZoneGrid(
   params: WorldParams,
   skyParams: SkyParams,
   waveParams: WaveParams = DEFAULT_WAVE_PARAMS,
+  weatherParams: WeatherParams = DEFAULT_WEATHER_PARAMS,
 ): Zone[][] {
   const { width, height, subWidth, subHeight } = config;
   const origData = original.data;
@@ -61,8 +70,20 @@ export function classifyZoneGrid(
       // Center of the 2×4 sub-pixel block
       const centerSx = cx * 2 + 1;
       const centerSy = cy * 4 + 2;
+      const atmosphere =
+        centerSy < subHorizonRow
+          ? sampleAtmosphere(
+              cx + 0.5,
+              cy + 0.5,
+              params.waterTime,
+              width,
+              height,
+              weatherParams,
+              params.dayOfYear,
+            )
+          : null;
 
-      if (cy < starTopRows && starCells[cy * width + cx] === 1) {
+      if (cy < starTopRows && starCells[cy * width + cx] === 1 && (atmosphere?.cloud ?? 0) < 0.14) {
         row.push("star");
         continue;
       }
@@ -73,10 +94,33 @@ export function classifyZoneGrid(
         const dy = (centerSy - sunCenterY) / sunRadiusY;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < 0.55) {
+        const nearHorizon = centerSy > subHorizonRow - 12;
+        const spraySource = nearHorizon
+          ? sampleOceanSurface(
+              centerSx,
+              0.08,
+              params.waterTime,
+              subWidth,
+              subHeight,
+              waveParams,
+              weatherParams,
+            ).foam
+          : 0;
+        const sprayStrength =
+          spraySource *
+          Math.max(0, (weatherParams.windSpeed - 11) / 8) *
+          weatherPulse(cx, cy, params.waterTime);
+
+        if (sprayStrength > 0.3) {
+          row.push("spray");
+        } else if ((atmosphere?.rain ?? 0) > 0.24) {
+          row.push("rain");
+        } else if (dist < 0.55 && (atmosphere?.cloud ?? 0) < 0.72) {
           row.push(params.isNight ? "moon-core" : "sun-core");
-        } else if (dist < 1.45) {
+        } else if (dist < 1.45 && (atmosphere?.cloud ?? 0) < 0.58) {
           row.push(params.isNight ? "moon" : "sun");
+        } else if ((atmosphere?.cloud ?? 0) > 0.2) {
+          row.push((atmosphere?.cloudLight ?? 0) > 0.58 ? "cloud-light" : "cloud-shadow");
         } else if (dist < 2.8 && params.horizonGlow > 0.3) {
           row.push("sky-glow");
         } else {
@@ -112,6 +156,7 @@ export function classifyZoneGrid(
           subWidth,
           subHeight,
           waveParams,
+          weatherParams,
         );
         const reflection = computeReflectionMetrics(
           centerSx,
@@ -121,13 +166,16 @@ export function classifyZoneGrid(
           subWidth,
           sample,
           waveParams,
+          weatherParams,
         );
         const reflectFade = Math.max(0, Math.min(1, (params.bodyElevation + 0.75) / 0.85));
         const moonFade = params.isNight ? 0.35 + 0.65 * params.moonIllum : 1;
         const reflectScore = reflection.reflectScore * reflectFade * moonFade;
         const isCoolBreak = sample.crest < -0.18;
 
-        if (params.isNight && reflectScore > 0.13) {
+        if (sample.foam > 0.68 && waterT > 0.1) {
+          row.push("foam");
+        } else if (params.isNight && reflectScore > 0.13) {
           // Moonglint column reads as pale light, never amber
           row.push(reflectScore > 0.28 ? "water-reflect-cool" : "water");
         } else if (!params.isNight && reflectScore > 0.06) {

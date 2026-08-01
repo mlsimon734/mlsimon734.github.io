@@ -1,4 +1,6 @@
-import type { GridConfig, WorldParams } from "./types";
+import type { GridConfig, WorldParams, WeatherParams } from "./types";
+import { DEFAULT_WEATHER_PARAMS } from "./types";
+import { sampleAtmosphere } from "./atmosphere";
 
 /** The bg-* subset of the zone palette the painted scene needs. */
 export interface BackgroundPalette {
@@ -6,6 +8,8 @@ export interface BackgroundPalette {
   "bg-sky-low": string;
   "bg-glow": string;
   "bg-moon-glow": string;
+  "bg-cloud-light": string;
+  "bg-cloud-shadow": string;
   "bg-water-top": string;
   "bg-water-deep": string;
 }
@@ -72,13 +76,23 @@ export function renderBackgroundPixels(
   palette: BackgroundPalette,
   world: Pick<
     WorldParams,
-    "sunX" | "sunY" | "sunElevation" | "horizonGlow" | "isNight" | "moonIllum"
+    | "sunX"
+    | "sunY"
+    | "sunElevation"
+    | "horizonGlow"
+    | "isNight"
+    | "moonIllum"
+    | "waterTime"
+    | "dayOfYear"
   >,
+  weather: WeatherParams = DEFAULT_WEATHER_PARAMS,
 ): Uint8ClampedArray<ArrayBuffer> {
   const { width, height } = config;
   const skyTop = hexToRgb(palette["bg-sky-top"]);
   const glow = hexToRgb(palette["bg-glow"]);
   const moonGlow = hexToRgb(palette["bg-moon-glow"]);
+  const cloudLight = hexToRgb(palette["bg-cloud-light"]);
+  const cloudShadow = hexToRgb(palette["bg-cloud-shadow"]);
   const waterDeep = hexToRgb(palette["bg-water-deep"]);
   // Deep night pulls the dusk band toward the zenith color so midnight
   // doesn't keep wearing sunset tones; dusk itself stays warm.
@@ -108,6 +122,28 @@ export function renderBackgroundPixels(
         rgb = mix(skyTop, skyLow, ditherQuantize(skyT, SKY_LEVELS, threshold));
         const lateral = Math.exp(-(dxNorm * dxNorm) / (2 * 0.32 * 0.32));
         glowMix = 0.85 * glowStrength * lateral * Math.pow(skyT, 1.6);
+
+        const atmosphere = sampleAtmosphere(
+          x + 0.5,
+          y + 0.5,
+          world.waterTime,
+          width,
+          height,
+          weather,
+          world.dayOfYear,
+        );
+        const hazeTint = world.isNight ? moonGlow : mix(skyLow, glow, 0.28 * glowStrength);
+        rgb = mix(rgb, hazeTint, ditherQuantize(atmosphere.haze * 0.28, 5, threshold));
+        const litCloud = mix(
+          cloudShadow,
+          cloudLight,
+          clamp01(atmosphere.cloudLight + Math.max(0, world.sunElevation) * 0.24),
+        );
+        rgb = mix(
+          rgb,
+          litCloud,
+          ditherQuantize(atmosphere.cloud * (0.52 + 0.2 * atmosphere.cloudEdge), 6, threshold),
+        );
       } else {
         const waterT = (y - horizonRow) / Math.max(height - 1 - horizonRow, 1);
         rgb = mix(
@@ -121,6 +157,11 @@ export function renderBackgroundPixels(
           // Subtle cool wash under the moonglint column
           glowMix = 0.22 * world.moonIllum * lateral * (1 - waterT);
         }
+        rgb = mix(
+          rgb,
+          skyLow,
+          ditherQuantize(weather.humidity * Math.pow(1 - waterT, 4) * 0.14, 4, threshold),
+        );
       }
 
       // Halo around the sun/moon disc so the body reads against the wash.
