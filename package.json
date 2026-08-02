@@ -20,7 +20,7 @@
     "@sveltejs/kit": "^2.59.1",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tailwindcss/vite": "^4.0.0",
-    "@types/three": "^0.184.1",
+    "@types/three": "^0.185.0",
     "mdsvex": "^0.12.8",
     "oxlint": "^1.63.0",
     "prettier": "^3.8.3",
@@ -37,6 +37,6 @@
     "@thi.ng/pixel": "^7.5.23",
     "@thi.ng/pixel-dither": "^1.1.191",
     "lucide-svelte": "^1.0.0",
-    "three": "^0.184.0"
+    "three": "^0.185.0"
   }
 }
