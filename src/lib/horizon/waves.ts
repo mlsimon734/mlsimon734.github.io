@@ -1,13 +1,15 @@
-import type { WaveParams } from "./types";
-import { DEFAULT_WAVE_PARAMS } from "./types";
+import type { WaveParams, WeatherParams } from "./types";
+import { DEFAULT_WAVE_PARAMS, DEFAULT_WEATHER_PARAMS } from "./types";
 
-interface OceanSample {
+export interface OceanSample {
   height: number;
   slopeX: number;
   slopeY: number;
   crest: number;
   /** Fine ripple field, 0–1 centred on 0.5 — drives ambient glitter and micro-texture. */
   glitter: number;
+  /** Wind-coupled breaking probability, 0–1 — drives coherent foam and spray. */
+  foam: number;
 }
 
 interface ReflectionMetrics {
@@ -97,9 +99,15 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-function sigmaForWater(waterT: number, sunElevation: number): number {
+function smoothstep(edge0: number, edge1: number, value: number): number {
+  const t = clamp01((value - edge0) / Math.max(edge1 - edge0, 0.0001));
+  return t * t * (3 - 2 * t);
+}
+
+function sigmaForWater(waterT: number, sunElevation: number, windRoughness: number): number {
   const lowSunFactor = 1 - clamp01((sunElevation + 0.1) / 1.1);
-  return 0.016 + (0.085 + 0.035 * lowSunFactor) * Math.pow(waterT, 0.88);
+  const roughnessSpread = 0.78 + 0.62 * windRoughness;
+  return 0.016 + (0.085 + 0.035 * lowSunFactor) * roughnessSpread * Math.pow(waterT, 0.88);
 }
 
 function verticalFadeForWater(waterT: number, sunElevation: number): number {
@@ -112,23 +120,29 @@ function sampleBand(
   u: number,
   vPerspective: number,
   timeSeconds: number,
+  rotation: number,
+  speedScale: number,
 ): { sum: number; slopeX: number; slopeY: number } {
   let sum = 0;
   let slopeX = 0;
   let slopeY = 0;
+  const rotCos = Math.cos(rotation);
+  const rotSin = Math.sin(rotation);
 
   for (const wave of components) {
+    const dirX = wave.dirX * rotCos - wave.dirY * rotSin;
+    const dirY = wave.dirX * rotSin + wave.dirY * rotCos;
     const theta =
-      TAU * wave.k * (wave.dirX * u + wave.dirY * vPerspective) -
-      wave.speed * timeSeconds +
+      TAU * wave.k * (dirX * u + dirY * vPerspective) -
+      wave.speed * speedScale * timeSeconds +
       wave.phase;
     const sinTheta = Math.sin(theta);
     const cosTheta = Math.cos(theta);
     const common = TAU * wave.k * wave.amplitude * cosTheta;
 
     sum += wave.amplitude * sinTheta;
-    slopeX += common * wave.dirX;
-    slopeY += common * wave.dirY;
+    slopeX += common * dirX;
+    slopeY += common * dirY;
   }
 
   return { sum, slopeX, slopeY };
@@ -147,6 +161,7 @@ export function sampleOceanSurface(
   width: number,
   height: number,
   waveParams: WaveParams = DEFAULT_WAVE_PARAMS,
+  weatherParams: WeatherParams = DEFAULT_WEATHER_PARAMS,
 ): OceanSample {
   const { swellScale, chopScale, crestSharpness } = waveParams;
   const shimmer = waveParams.shimmer ?? 1;
@@ -157,24 +172,50 @@ export function sampleOceanSurface(
   const vCrest = Math.pow(v, 1.1);
   const vRipple = 0.06 + 0.94 * v;
   const rippleEnvelope = 0.4 + 0.6 * v;
-  const swell = sampleBand(SWELL_COMPONENTS, u, vPerspective, timeSeconds);
-  const chop = sampleBand(CHOP_COMPONENTS, u, vPerspective, timeSeconds);
-  const ripple = sampleBand(RIPPLE_COMPONENTS, u, vRipple, timeSeconds);
+  const windEnergy = clamp01((weatherParams.windSpeed - 1.5) / 16);
+  const directionDelta = (((weatherParams.windDirection - 252 + 540) % 360) - 180) * 0.45;
+  const windRotation = (directionDelta * Math.PI) / 180;
+  const speedScale = 0.72 + 0.56 * windEnergy;
+  const swell = sampleBand(
+    SWELL_COMPONENTS,
+    u,
+    vPerspective,
+    timeSeconds,
+    windRotation * 0.35,
+    0.86 + 0.14 * speedScale,
+  );
+  const chop = sampleBand(CHOP_COMPONENTS, u, vPerspective, timeSeconds, windRotation, speedScale);
+  const ripple = sampleBand(
+    RIPPLE_COMPONENTS,
+    u,
+    vRipple,
+    timeSeconds,
+    windRotation * 1.2,
+    speedScale * 1.16,
+  );
   const swellSum = swell.sum / SWELL_TOTAL;
   const chopSum = chop.sum / CHOP_TOTAL;
   const rippleSum = ripple.sum / RIPPLE_TOTAL;
   const dvPerspective = derivativeVPerspective(v);
   const dvChop = derivativeChopEnvelope(v);
-  const rippleScale = RIPPLE_SLOPE_SCALE * shimmer * rippleEnvelope;
+  const gust =
+    0.88 +
+    0.08 * Math.sin(TAU * (u * 1.7 + v * 0.35) - timeSeconds * 0.24) +
+    0.04 * Math.sin(TAU * (u * 4.1 - v * 0.8) - timeSeconds * 0.51);
+  const chopEnergy = (0.56 + 0.62 * windEnergy) * gust;
+  const rippleScale =
+    RIPPLE_SLOPE_SCALE * shimmer * rippleEnvelope * (0.45 + 0.9 * windEnergy) * gust;
 
-  const heightRaw = swellScale * swellSum + chopScale * vChop * chopSum;
+  const heightRaw = swellScale * swellSum + chopScale * chopEnergy * vChop * chopSum;
   const slopeXRaw =
     swellScale * (swell.slopeX / SWELL_TOTAL) +
-    chopScale * vChop * (chop.slopeX / CHOP_TOTAL) +
+    chopScale * chopEnergy * vChop * (chop.slopeX / CHOP_TOTAL) +
     rippleScale * (ripple.slopeX / RIPPLE_TOTAL);
   const slopeYRaw =
     swellScale * (swell.slopeY / SWELL_TOTAL) * dvPerspective +
-    chopScale * (dvChop * chopSum + vChop * (chop.slopeY / CHOP_TOTAL) * dvPerspective) +
+    chopScale *
+      chopEnergy *
+      (dvChop * chopSum + vChop * (chop.slopeY / CHOP_TOTAL) * dvPerspective) +
     rippleScale * (ripple.slopeY / RIPPLE_TOTAL) * 0.94;
 
   // Convert from normalised-coordinate derivatives into screen-space-ish slopes.
@@ -186,6 +227,11 @@ export function sampleOceanSurface(
       0.15 * shimmer * rippleSum * rippleEnvelope,
   );
   const glitter = clamp01(0.5 + 0.5 * shimmer * rippleSum * rippleEnvelope);
+  const screenSteepness = Math.sqrt(slopeX * slopeX + slopeY * slopeY);
+  const breakingCrest = smoothstep(0.62 - 0.1 * windEnergy, 0.94, crest);
+  const breakingSlope = smoothstep(0.18, 0.52 - 0.08 * windEnergy, screenSteepness);
+  const foamTexture = 0.62 + 0.38 * Math.sin(TAU * (u * 11.3 + v * 4.2) - timeSeconds * 1.7);
+  const foam = clamp01(breakingCrest * breakingSlope * (0.24 + 0.78 * windEnergy) * foamTexture);
 
   return {
     height: heightRaw,
@@ -193,6 +239,7 @@ export function sampleOceanSurface(
     slopeY,
     crest,
     glitter,
+    foam,
   };
 }
 
@@ -204,9 +251,11 @@ export function computeReflectionMetrics(
   width: number,
   sample: Pick<OceanSample, "slopeX" | "slopeY">,
   waveParams: WaveParams = DEFAULT_WAVE_PARAMS,
+  weatherParams: WeatherParams = DEFAULT_WEATHER_PARAMS,
 ): ReflectionMetrics {
   const dxNorm = (x - sunCenterX) / width;
-  const sigma = sigmaForWater(waterT, sunElevation);
+  const windRoughness = clamp01((weatherParams.windSpeed - 1.5) / 16);
+  const sigma = sigmaForWater(waterT, sunElevation, windRoughness);
   const columnMask = Math.exp(-(dxNorm * dxNorm) / (2 * sigma * sigma));
   const verticalFade = verticalFadeForWater(waterT, sunElevation);
   const facetAlignment = Math.max(

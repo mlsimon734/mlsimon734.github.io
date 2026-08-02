@@ -1,6 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { DESKTOP_CONFIG, MOBILE_CONFIG, type SkyParams, type WaveParams } from "$lib/horizon";
+  import {
+    DESKTOP_CONFIG,
+    MOBILE_CONFIG,
+    type SkyParams,
+    type WaveParams,
+    type WeatherParams,
+  } from "$lib/horizon";
   import {
     createMonoMetrics,
     resolveZonePalette,
@@ -12,9 +18,11 @@
   let {
     waveParams,
     skyParams,
+    weatherParams,
   }: {
     waveParams: WaveParams;
     skyParams: SkyParams;
+    weatherParams: WeatherParams;
   } = $props();
 
   let canvas: HTMLCanvasElement | undefined = $state();
@@ -186,6 +194,7 @@
       active: shouldAnimate,
       waveParams: { ...waveParams },
       skyParams: { ...skyParams },
+      weatherParams: { ...weatherParams },
     });
   });
 </script>
@@ -197,7 +206,7 @@
 {:else}
   <div class="fallback-note">
     <p>OffscreenCanvas isn&apos;t available here, so this mode falls back to the DOM renderer.</p>
-    <AsciiHorizonDom {waveParams} {skyParams} />
+    <AsciiHorizonDom {waveParams} {skyParams} {weatherParams} />
   </div>
 {/if}
 

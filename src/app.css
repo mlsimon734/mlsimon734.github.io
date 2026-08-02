@@ -70,6 +70,7 @@
   --color-theme-hover: rgba(251, 191, 36, 0.1);
   --color-theme-divider: var(--color-sunset-amber-200);
   --color-theme-selection: var(--color-sunset-amber-100);
+  --color-theme-console-accent: #875800;
 
   /* Horizon visualization — dark navy postcard palette. The particles sketch reads
      these from the document root; the ASCII postcard overrides them per-theme via
@@ -77,6 +78,10 @@
   --color-horizon-star: #ffe7a3;
   --color-horizon-sky: #59708d;
   --color-horizon-sky-glow: #ff7a32;
+  --color-horizon-cloud-light: #8fa0ae;
+  --color-horizon-cloud-shadow: #415469;
+  --color-horizon-rain: #6f8ba3;
+  --color-horizon-spray: #d6e5e8;
   --color-horizon-sun-core: #ffd166;
   --color-horizon-sun: #ff9f3f;
   --color-horizon-horizon: #e85d2a;
@@ -84,6 +89,7 @@
   --color-horizon-water-reflect: #ffd166;
   --color-horizon-water-reflect-warm: #f08a4b;
   --color-horizon-water-reflect-cool: #376d8d;
+  --color-horizon-foam: #c4d8dc;
   --color-horizon-water-far: #243b6b;
 }
 
@@ -96,6 +102,8 @@
   --color-horizon-bg-sky-low: #2a2440;
   --color-horizon-bg-glow: #7d3418;
   --color-horizon-bg-moon-glow: #2e4059;
+  --color-horizon-bg-cloud-light: #4c5c69;
+  --color-horizon-bg-cloud-shadow: #172433;
   --color-horizon-bg-water-top: #0d2233;
   --color-horizon-bg-water-deep: #071018;
   --color-horizon-moon-core: #eef2f7;
@@ -110,11 +118,17 @@
   --color-horizon-bg-sky-low: #e8d9bf;
   --color-horizon-bg-glow: #f4b061;
   --color-horizon-bg-moon-glow: #6f94b8;
+  --color-horizon-bg-cloud-light: #e4e7e5;
+  --color-horizon-bg-cloud-shadow: #8799a5;
   --color-horizon-bg-water-top: #93bad2;
   --color-horizon-bg-water-deep: #5d87a9;
   --color-horizon-star: #b97f2b;
   --color-horizon-sky: #7391ab;
   --color-horizon-sky-glow: #e56f33;
+  --color-horizon-cloud-light: #f5f0e5;
+  --color-horizon-cloud-shadow: #637f92;
+  --color-horizon-rain: #486b82;
+  --color-horizon-spray: #f6fbfc;
   --color-horizon-sun-core: #f28405;
   --color-horizon-sun: #e2650b;
   --color-horizon-moon-core: #f4f9fd;
@@ -124,6 +138,7 @@
   --color-horizon-water-reflect: #e8940f;
   --color-horizon-water-reflect-warm: #d1713a;
   --color-horizon-water-reflect-cool: #e4f1f7;
+  --color-horizon-foam: #eff9fa;
   --color-horizon-water-far: #24476b;
 }
 
@@ -138,6 +153,7 @@ html[data-theme="dark"] {
   --color-theme-hover: rgba(251, 191, 36, 0.08);
   --color-theme-divider: rgba(252, 211, 77, 0.28);
   --color-theme-selection: rgba(251, 191, 36, 0.2);
+  --color-theme-console-accent: #fbbf24;
   color-scheme: dark;
 }
 

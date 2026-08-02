@@ -4,11 +4,19 @@ import { generateSkyBuffer } from "./gradient";
 import { packBraille, packBrailleOrdered } from "./braille";
 import { classifyZoneGrid } from "./ascii-map";
 import { sampleOceanSurface } from "./waves";
-import type { GridConfig, AsciiCell, WaveParams, SkyParams } from "./types";
-import { DEFAULT_WAVE_PARAMS, DEFAULT_SKY_PARAMS } from "./types";
+import { rainGlyph, sampleAtmosphere } from "./atmosphere";
+import type { GridConfig, AsciiCell, WaveParams, SkyParams, WeatherParams } from "./types";
+import { DEFAULT_WAVE_PARAMS, DEFAULT_SKY_PARAMS, DEFAULT_WEATHER_PARAMS } from "./types";
 
-export { DESKTOP_CONFIG, MOBILE_CONFIG, DEFAULT_WAVE_PARAMS, DEFAULT_SKY_PARAMS } from "./types";
-export type { AsciiCell, GridConfig, WaveParams, SkyParams } from "./types";
+export {
+  DESKTOP_CONFIG,
+  MOBILE_CONFIG,
+  DEFAULT_WAVE_PARAMS,
+  DEFAULT_SKY_PARAMS,
+  DEFAULT_WEATHER_PARAMS,
+} from "./types";
+export type { AsciiCell, GridConfig, WaveParams, SkyParams, WeatherParams } from "./types";
+export type { WeatherSource } from "./weather";
 
 // Zone-specific character gradients (dark → bright)
 const GLOW_GRADIENT = "  ·∙:;";
@@ -17,6 +25,8 @@ const ZONE_GRADIENTS: Record<string, string> = {
   "sky-glow": GLOW_GRADIENT,
 };
 const STAR_CHARS = ["✦", "\u00B7", "\u2217", "."];
+const CLOUD_LIGHT_GRADIENT = " ·░▒▓";
+const CLOUD_SHADOW_GRADIENT = "  ░▒▓";
 const MIRRORED_SUN_ZONES = new Set<AsciiCell["zone"]>(["sun-core", "sun", "sky-glow"]);
 
 // Average the 2×4 sub-pixel block corresponding to a char cell
@@ -46,6 +56,7 @@ function foregroundWaterChar(
   config: GridConfig,
   params: ReturnType<typeof computeWorldParams>,
   waveParams: WaveParams,
+  weatherParams: WeatherParams,
   fallbackChar: string,
 ): string {
   const subHorizonRow = Math.floor(config.subHeight * 0.65);
@@ -62,6 +73,7 @@ function foregroundWaterChar(
     config.subWidth,
     config.subHeight,
     waveParams,
+    weatherParams,
   );
   const slope = sample.slopeX;
   const steepness = Math.abs(slope);
@@ -100,9 +112,16 @@ export function generateHorizon(
   waterTime: number = 0,
   waveParams: WaveParams = DEFAULT_WAVE_PARAMS,
   skyParams: SkyParams = DEFAULT_SKY_PARAMS,
+  weatherParams: WeatherParams = DEFAULT_WEATHER_PARAMS,
 ): AsciiCell[][] {
   const params = computeWorldParams(now, waterTime, skyParams);
-  const { original, dithered } = generateSkyBuffer(params, config, waveParams, skyParams);
+  const { original, dithered } = generateSkyBuffer(
+    params,
+    config,
+    waveParams,
+    skyParams,
+    weatherParams,
+  );
 
   const subHorizonRow = Math.floor(config.subHeight * 0.65);
 
@@ -123,7 +142,7 @@ export function generateHorizon(
   const waterBraille = packBraille(dithered, config);
   const orderedBraille = packBrailleOrdered(original, config);
   const origData = original.data;
-  const zones = classifyZoneGrid(original, config, params, skyParams, waveParams);
+  const zones = classifyZoneGrid(original, config, params, skyParams, waveParams, weatherParams);
 
   // Sun center in char-cell coordinates for symmetry mirroring
   const sunCenterCx = Math.round(params.sunX * config.width);
@@ -142,8 +161,48 @@ export function generateHorizon(
 
       if (zone === "star") {
         char = STAR_CHARS[(x * 7 + y * 13) % STAR_CHARS.length];
+      } else if (zone === "cloud-light" || zone === "cloud-shadow") {
+        const atmosphere = sampleAtmosphere(
+          x + 0.5,
+          y + 0.5,
+          params.waterTime,
+          config.width,
+          config.height,
+          weatherParams,
+          params.dayOfYear,
+        );
+        char = gradientChar(
+          atmosphere.cloud * 255,
+          zone === "cloud-light" ? CLOUD_LIGHT_GRADIENT : CLOUD_SHADOW_GRADIENT,
+        );
+      } else if (zone === "rain") {
+        char = rainGlyph(weatherParams.windDirection, x, y);
+      } else if (zone === "spray") {
+        char = (x + y) % 3 === 0 ? "'" : "·";
+      } else if (zone === "foam") {
+        const centerSx = x * 2 + 1;
+        const centerSy = y * 4 + 2;
+        const waterT = (centerSy - subHorizonRow) / (config.subHeight - subHorizonRow);
+        const sample = sampleOceanSurface(
+          centerSx,
+          waterT,
+          params.waterTime,
+          config.subWidth,
+          config.subHeight,
+          waveParams,
+          weatherParams,
+        );
+        char = sample.foam > 0.92 ? "*" : sample.foam > 0.8 ? "°" : "≈";
       } else if (zone === "water" || zone === "water-far") {
-        char = foregroundWaterChar(x, y, config, params, waveParams, waterBraille[y][x].char);
+        char = foregroundWaterChar(
+          x,
+          y,
+          config,
+          params,
+          waveParams,
+          weatherParams,
+          waterBraille[y][x].char,
+        );
       } else if (
         zone === "water-reflect" ||
         zone === "water-reflect-warm" ||
@@ -179,11 +238,8 @@ export function generateHorizon(
     grid.push(row);
   }
 
-  // Bilateral symmetry mirroring for sun disc and glow.
-  // Skipped at night: the moon's phase crescent is deliberately asymmetric.
-  if (params.isNight) {
-    return grid;
-  }
+  // Bilateral symmetry mirroring for the solar disc and glow only. The lunar
+  // crescent remains deliberately asymmetric when both bodies share twilight.
   const charHorizonRow = Math.floor(config.height * 0.65);
   const sunMirrorTop = Math.max(0, sunCenterCy - sunRadiusCy * 2);
   const sunMirrorBottom = Math.min(charHorizonRow, sunCenterCy + sunRadiusCy + 1);

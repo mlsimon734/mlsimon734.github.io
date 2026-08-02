@@ -12,7 +12,8 @@
     "lint:fix": "oxlint --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "ascii:convert": "scripts/convert-ascii.sh"
+    "ascii:convert": "scripts/convert-ascii.sh",
+    "sync:resume": "bun scripts/sync-resume.ts"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.0",
