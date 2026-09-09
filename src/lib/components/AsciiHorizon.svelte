@@ -11,7 +11,19 @@
   } from "$lib/horizon";
   import { fetchLosAngelesWeather, type LosAngelesWeather } from "$lib/horizon/weather";
   import AsciiHorizonWorkerCanvas from "./AsciiHorizonWorkerCanvas.svelte";
+  import MotionControl from "./MotionControl.svelte";
   import WaveControls from "./WaveControls.svelte";
+
+  let paused = $state(false);
+  let reducedMotion = $state(false);
+
+  $effect(() => {
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    reducedMotion = mql.matches;
+    const handler = (event: MediaQueryListEvent) => (reducedMotion = event.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  });
 
   let waveParams: WaveParams = $state({ ...DEFAULT_WAVE_PARAMS });
   let skyParams: SkyParams = $state({ ...DEFAULT_SKY_PARAMS });
@@ -116,8 +128,10 @@
 
 <div class="ascii-horizon-stack">
   <div class="horizon-card horizon-scene">
-    <AsciiHorizonWorkerCanvas {waveParams} {skyParams} {weatherParams} />
+    <AsciiHorizonWorkerCanvas {waveParams} {skyParams} {weatherParams} {paused} />
   </div>
+
+  <MotionControl bind:paused {reducedMotion} />
 
   <WaveControls
     bind:params={waveParams}

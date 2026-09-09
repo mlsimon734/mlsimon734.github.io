@@ -29,9 +29,16 @@
     {
       name: "AsciiHorizon (this site)",
       href: "https://github.com/mlsimon734/mlsimon734.github.io",
-      desc: "A real-time animated ASCII sunset rendered three different ways: DOM, WebGL shader with a glyph atlas, and an OffscreenCanvas worker. Wave equations driven by LA local time, dithered into Braille and ASCII zones. The personality glue holding the rest of this site together.",
-      stack: ["Svelte 5", "TypeScript", "WebGL", "Web Workers"],
+      desc: "A real-time animated ASCII sunset rendered off the main thread with an OffscreenCanvas worker. Wave equations driven by LA local time and lunar phase, dithered into Braille and ASCII zones. The personality glue holding the rest of this site together.",
+      stack: ["Svelte 5", "TypeScript", "Web Workers"],
       period: "2025 –",
+    },
+    {
+      name: "Ocean Sunset Particles",
+      href: "/sketches/ocean-sunset",
+      desc: "A reactive Three.js/WebGL2 point-cloud sketch inspired by three-ml-sharp: dense coastal particles, GPU wave and flow displacement, shaded depth, bloom, and pointer-driven camera parallax.",
+      stack: ["Svelte 5", "Three.js", "GLSL", "WebGL2"],
+      period: "2026",
     },
   ];
 </script>
@@ -51,7 +58,12 @@
     <ul class="space-y-2">
       {#each projects as p}
         <li>
-          <a href={p.href} target="_blank" rel="noopener noreferrer" class="work-link">
+          <a
+            href={p.href}
+            target={p.href.startsWith("/") ? undefined : "_blank"}
+            rel={p.href.startsWith("/") ? undefined : "noopener noreferrer"}
+            class="work-link"
+          >
             <span class="work-name">
               {p.name}
               <ArrowUpRight size={18} class="work-arrow" />
