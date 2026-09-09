@@ -9,6 +9,7 @@ import {
 } from "$lib/horizon";
 import { renderBackgroundPixels } from "$lib/horizon/background";
 import { encodeRuns, type MonoMetrics, type ZonePalette } from "$lib/horizon/render";
+import { sampleAtmosphereGrid, type AtmosphereSample } from "$lib/horizon/atmosphere";
 import { computeWorldParams } from "$lib/horizon/world";
 import type { WorldParams } from "$lib/horizon/types";
 
@@ -105,6 +106,8 @@ function resizeCanvas() {
   state.ctx.textBaseline = "top";
 }
 
+let atmosphereTime = -Infinity;
+let atmosphereGrid: AtmosphereSample[] = [];
 let bgTile: OffscreenCanvas | null = null;
 let bgTileCtx: OffscreenCanvasRenderingContext2D | null = null;
 
@@ -127,7 +130,7 @@ function paintBackground(
   }
   if (!bgTileCtx) return;
 
-  const pixels = renderBackgroundPixels(config, palette, world, weatherParams);
+  const pixels = renderBackgroundPixels(config, palette, world, weatherParams, atmosphereGrid);
   bgTileCtx.putImageData(new ImageData(pixels, config.width, config.height), 0, 0);
 
   ctx.imageSmoothingEnabled = false;
@@ -148,14 +151,27 @@ function render() {
   }
 
   const waterTime = getWaterTime(performance.now());
-  const world = computeWorldParams(Date.now(), waterTime, state.skyParams);
+  const now = Date.now();
+  const world = computeWorldParams(now, waterTime, state.skyParams);
+  // Clouds move slowly; hold their samples between water frames.
+  const nextAtmosphereTime = Math.floor(waterTime * 12) / 12;
+  if (nextAtmosphereTime !== atmosphereTime) {
+    atmosphereTime = nextAtmosphereTime;
+    atmosphereGrid = sampleAtmosphereGrid(
+      state.config,
+      { ...world, waterTime: atmosphereTime },
+      state.weatherParams,
+    );
+  }
   const grid = generateHorizon(
-    Date.now(),
+    now,
     state.config,
     waterTime,
     state.waveParams,
     state.skyParams,
     state.weatherParams,
+    world,
+    atmosphereGrid,
   );
   const runs = encodeRuns(grid);
   const { ctx } = state;
@@ -190,6 +206,7 @@ function render() {
 function syncState(message: SyncMessage) {
   const currentWaterTime = getWaterTime(performance.now());
 
+  atmosphereTime = -Infinity;
   state.config = message.config;
   state.dpr = message.dpr;
   state.metrics = message.metrics;
