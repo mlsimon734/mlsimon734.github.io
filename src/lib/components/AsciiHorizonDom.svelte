@@ -9,6 +9,7 @@
     type SkyParams,
     type WeatherParams,
   } from "$lib/horizon";
+  import { sampleAtmosphereGrid } from "$lib/horizon/atmosphere";
   import { computeWorldParams } from "$lib/horizon/world";
   import { renderBackgroundPixels } from "$lib/horizon/background";
   import { encodeRuns, resolveZonePalette } from "$lib/horizon/render";
@@ -20,10 +21,12 @@
     waveParams,
     skyParams,
     weatherParams,
+    paused = false,
   }: {
     waveParams: WaveParams;
     skyParams: SkyParams;
     weatherParams: WeatherParams;
+    paused?: boolean;
   } = $props();
 
   let container: HTMLDivElement | undefined = $state();
@@ -41,14 +44,24 @@
   let now = $state(Date.now());
 
   const config = $derived(isDesktop ? DESKTOP_CONFIG : MOBILE_CONFIG);
-  const shouldAnimate = $derived(!reducedMotion && inViewport && pageVisible);
+  const shouldAnimate = $derived(!paused && !reducedMotion && inViewport && pageVisible);
+  const world = $derived(computeWorldParams(now, waterTime, skyParams));
+  const atmosphereGrid = $derived(sampleAtmosphereGrid(config, world, weatherParams));
   const grid = $derived(
-    generateHorizon(now, config, waterTime, waveParams, skyParams, weatherParams),
+    generateHorizon(
+      now,
+      config,
+      waterTime,
+      waveParams,
+      skyParams,
+      weatherParams,
+      world,
+      atmosphereGrid,
+    ),
   );
   const spans = $derived(
     encodeRuns(grid) as { chars: string; zone: AsciiCell["zone"]; twinkleDelay?: number }[][],
   );
-  const world = $derived(computeWorldParams(now, waterTime, skyParams));
   // Scale the fixed-font art block down to the container so narrow cards see
   // the whole scene (matching the canvas renderers) instead of clipping it.
   const scale = $derived(naturalW > 0 && containerW > 0 ? Math.min(1, containerW / naturalW) : 1);
@@ -139,7 +152,7 @@
     if (!container) return;
 
     const palette = resolveZonePalette(getComputedStyle(container));
-    const pixels = renderBackgroundPixels(config, palette, world, weatherParams);
+    const pixels = renderBackgroundPixels(config, palette, world, weatherParams, atmosphereGrid);
     const tile = document.createElement("canvas");
     tile.width = config.width;
     tile.height = config.height;

@@ -1,4 +1,4 @@
-import type { WeatherParams } from "./types";
+import type { GridConfig, WorldParams, WeatherParams } from "./types";
 
 export interface AtmosphereSample {
   cloud: number;
@@ -120,4 +120,29 @@ export function rainGlyph(windDirection: number, x: number, y: number): string {
 
 export function weatherPulse(x: number, y: number, timeSeconds: number): number {
   return 0.5 + 0.5 * Math.sin(TAU * (x * 0.019 + y * 0.037) - timeSeconds * 0.7);
+}
+
+/** One cell-resolution atmosphere field, shared by glyphs and painted background. */
+export function sampleAtmosphereGrid(
+  config: GridConfig,
+  world: Pick<WorldParams, "waterTime" | "dayOfYear">,
+  weather: WeatherParams,
+): AtmosphereSample[] {
+  const samples: AtmosphereSample[] = [];
+  for (let y = 0; y < Math.ceil(config.height * 0.65); y++) {
+    for (let x = 0; x < config.width; x++) {
+      samples.push(
+        sampleAtmosphere(
+          x + 0.5,
+          y + 0.5,
+          world.waterTime,
+          config.width,
+          config.height,
+          weather,
+          world.dayOfYear,
+        ),
+      );
+    }
+  }
+  return samples;
 }
