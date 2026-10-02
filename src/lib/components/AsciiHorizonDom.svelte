@@ -8,10 +8,10 @@
     type WaveParams,
     type SkyParams,
     type WeatherParams,
-  } from "$lib/horizon";
-  import { computeWorldParams } from "$lib/horizon/world";
-  import { renderBackgroundPixels } from "$lib/horizon/background";
-  import { encodeRuns, resolveZonePalette } from "$lib/horizon/render";
+  } from "#lib/horizon/index.js";
+  import { computeWorldParams } from "#lib/horizon/world.js";
+  import { renderBackgroundPixels } from "#lib/horizon/background.js";
+  import { encodeRuns, resolveZonePalette } from "#lib/horizon/render.js";
 
   const TARGET_FPS = 12;
   const FRAME_INTERVAL_MS = 1000 / TARGET_FPS;

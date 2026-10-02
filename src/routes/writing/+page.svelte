@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Seo from "$lib/components/Seo.svelte";
-  import { inview } from "$lib/actions/inview";
+  import Seo from "#lib/components/Seo.svelte";
+  import { inview } from "#lib/actions/inview.js";
 
   let { data } = $props();
 
