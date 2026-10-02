@@ -1,6 +1,6 @@
 import type { GridConfig, WorldParams, WeatherParams } from "./types";
 import { DEFAULT_WEATHER_PARAMS } from "./types";
-import { sampleAtmosphere } from "./atmosphere";
+import { sampleAtmosphereGrid } from "./atmosphere";
 
 /** The bg-* subset of the zone palette the painted scene needs. */
 export interface BackgroundPalette {
@@ -90,6 +90,7 @@ export function renderBackgroundPixels(
     | "dayOfYear"
   >,
   weather: WeatherParams = DEFAULT_WEATHER_PARAMS,
+  atmosphereGrid = sampleAtmosphereGrid(config, world, weather),
 ): Uint8ClampedArray<ArrayBuffer> {
   const { width, height } = config;
   const skyTop = hexToRgb(palette["bg-sky-top"]);
@@ -129,15 +130,7 @@ export function renderBackgroundPixels(
         const lateral = Math.exp(-(sunDxNorm * sunDxNorm) / (2 * 0.32 * 0.32));
         sunGlowMix = 0.85 * glowStrength * lateral * Math.pow(skyT, 1.6);
 
-        const atmosphere = sampleAtmosphere(
-          x + 0.5,
-          y + 0.5,
-          world.waterTime,
-          width,
-          height,
-          weather,
-          world.dayOfYear,
-        );
+        const atmosphere = atmosphereGrid[y * width + x];
         const daylightHaze = mix(skyLow, glow, 0.28 * glowStrength);
         const hazeTint = mix(daylightHaze, moonGlow, nightT);
         rgb = mix(rgb, hazeTint, ditherQuantize(atmosphere.haze * 0.28, 5, threshold));

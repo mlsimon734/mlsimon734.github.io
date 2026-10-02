@@ -4,7 +4,7 @@ import { generateSkyBuffer } from "./gradient";
 import { packBraille, packBrailleOrdered } from "./braille";
 import { classifyZoneGrid } from "./ascii-map";
 import { sampleOceanSurface } from "./waves";
-import { rainGlyph, sampleAtmosphere } from "./atmosphere";
+import { rainGlyph, sampleAtmosphereGrid } from "./atmosphere";
 import type { GridConfig, AsciiCell, WaveParams, SkyParams, WeatherParams } from "./types";
 import { DEFAULT_WAVE_PARAMS, DEFAULT_SKY_PARAMS, DEFAULT_WEATHER_PARAMS } from "./types";
 
@@ -25,8 +25,8 @@ const ZONE_GRADIENTS: Record<string, string> = {
   "sky-glow": GLOW_GRADIENT,
 };
 const STAR_CHARS = ["✦", "\u00B7", "\u2217", "."];
-const CLOUD_LIGHT_GRADIENT = " ·░▒▓";
-const CLOUD_SHADOW_GRADIENT = "  ░▒▓";
+const CLOUD_LIGHT_GRADIENT = "  ·:░▒";
+const CLOUD_SHADOW_GRADIENT = "   ·░";
 const MIRRORED_SUN_ZONES = new Set<AsciiCell["zone"]>(["sun-core", "sun", "sky-glow"]);
 
 // Average the 2×4 sub-pixel block corresponding to a char cell
@@ -113,8 +113,9 @@ export function generateHorizon(
   waveParams: WaveParams = DEFAULT_WAVE_PARAMS,
   skyParams: SkyParams = DEFAULT_SKY_PARAMS,
   weatherParams: WeatherParams = DEFAULT_WEATHER_PARAMS,
+  params = computeWorldParams(now, waterTime, skyParams),
+  atmosphereGrid = sampleAtmosphereGrid(config, params, weatherParams),
 ): AsciiCell[][] {
-  const params = computeWorldParams(now, waterTime, skyParams);
   const { original, dithered } = generateSkyBuffer(
     params,
     config,
@@ -142,7 +143,15 @@ export function generateHorizon(
   const waterBraille = packBraille(dithered, config);
   const orderedBraille = packBrailleOrdered(original, config);
   const origData = original.data;
-  const zones = classifyZoneGrid(original, config, params, skyParams, waveParams, weatherParams);
+  const zones = classifyZoneGrid(
+    original,
+    config,
+    params,
+    skyParams,
+    waveParams,
+    weatherParams,
+    atmosphereGrid,
+  );
 
   // Sun center in char-cell coordinates for symmetry mirroring
   const sunCenterCx = Math.round(params.sunX * config.width);
@@ -162,17 +171,10 @@ export function generateHorizon(
       if (zone === "star") {
         char = STAR_CHARS[(x * 7 + y * 13) % STAR_CHARS.length];
       } else if (zone === "cloud-light" || zone === "cloud-shadow") {
-        const atmosphere = sampleAtmosphere(
-          x + 0.5,
-          y + 0.5,
-          params.waterTime,
-          config.width,
-          config.height,
-          weatherParams,
-          params.dayOfYear,
-        );
+        const atmosphere = atmosphereGrid[y * config.width + x];
         char = gradientChar(
-          atmosphere.cloud * 255,
+          Math.min(1, atmosphere.cloud * 0.5 + atmosphere.cloudEdge * atmosphere.cloudLight * 0.5) *
+            255,
           zone === "cloud-light" ? CLOUD_LIGHT_GRADIENT : CLOUD_SHADOW_GRADIENT,
         );
       } else if (zone === "rain") {

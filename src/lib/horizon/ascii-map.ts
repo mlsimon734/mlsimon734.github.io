@@ -8,7 +8,7 @@ import type {
   WeatherParams,
 } from "./types";
 import { DEFAULT_WAVE_PARAMS, DEFAULT_WEATHER_PARAMS } from "./types";
-import { sampleAtmosphere, weatherPulse } from "./atmosphere";
+import { type AtmosphereSample, weatherPulse } from "./atmosphere";
 import { computeReflectionMetrics, sampleOceanSurface } from "./waves";
 
 type Zone = AsciiCell["zone"];
@@ -24,6 +24,7 @@ export function classifyZoneGrid(
   skyParams: SkyParams,
   waveParams: WaveParams = DEFAULT_WAVE_PARAMS,
   weatherParams: WeatherParams = DEFAULT_WEATHER_PARAMS,
+  atmosphereGrid: readonly AtmosphereSample[],
 ): Zone[][] {
   const { width, height, subWidth, subHeight } = config;
   const origData = original.data;
@@ -79,18 +80,7 @@ export function classifyZoneGrid(
       // Center of the 2×4 sub-pixel block
       const centerSx = cx * 2 + 1;
       const centerSy = cy * 4 + 2;
-      const atmosphere =
-        centerSy < subHorizonRow
-          ? sampleAtmosphere(
-              cx + 0.5,
-              cy + 0.5,
-              params.waterTime,
-              width,
-              height,
-              weatherParams,
-              params.dayOfYear,
-            )
-          : null;
+      const atmosphere = centerSy < subHorizonRow ? atmosphereGrid[cy * width + cx] : null;
 
       if (cy < starTopRows && starCells[cy * width + cx] === 1 && (atmosphere?.cloud ?? 0) < 0.14) {
         row.push("star");

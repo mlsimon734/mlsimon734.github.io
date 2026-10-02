@@ -174,181 +174,192 @@
         <button onclick={() => applyPreset("squall")}>squall line</button>
       </div>
 
-      <div class="equation">
-        <p class="eq-line">
-          <em>&Psi;</em> = <em>S</em><sub>swell</sub> + <em>W</em><sub>chop</sub> +
-          <em>A</em><sub>cloud</sub> + <em>L</em><sub>sun</sub>
-        </p>
-        <p class="eq-detail">
-          One advected system: wind couples the wave spectrum, foam, cloud field, rain, and glitter
-          path.
-        </p>
+      <div class="sliders everyday-controls">
+        <label class="slider-row">
+          <span class="slider-label"
+            >Time <span class="slider-value">{formatClock(sceneTime)}</span></span
+          >
+          <input
+            type="range"
+            min="0"
+            max="23.75"
+            step="0.25"
+            value={sceneTime}
+            oninput={setSceneTime}
+          />
+        </label>
+        <label class="slider-row">
+          <span class="slider-label"
+            >Wind <span class="slider-value">{weatherParams.windSpeed.toFixed(1)}m/s</span></span
+          >
+          <input
+            type="range"
+            min="0"
+            max="22"
+            step="0.5"
+            bind:value={weatherParams.windSpeed}
+            oninput={onManualWeather}
+          />
+        </label>
+        <label class="slider-row">
+          <span class="slider-label"
+            >Cloud <span class="slider-value">{Math.round(weatherParams.cloudCover * 100)}%</span
+            ></span
+          >
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            bind:value={weatherParams.cloudCover}
+            oninput={onManualWeather}
+          />
+        </label>
       </div>
-
-      <div class="parameter-groups">
-        <section>
-          <div class="section-title"><span class="comment-prefix">//</span> sky + weather</div>
-          <div class="sliders">
-            <label class="slider-row">
-              <span class="slider-label"
-                >Time <span class="slider-value">{formatClock(sceneTime)}</span></span
-              >
-              <input
-                type="range"
-                min="0"
-                max="23.75"
-                step="0.25"
-                value={sceneTime}
-                oninput={setSceneTime}
-              />
-            </label>
-            <label class="slider-row">
-              <span class="slider-label"
-                >Wind <span class="slider-value">{weatherParams.windSpeed.toFixed(1)}m/s</span
-                ></span
-              >
-              <input
-                type="range"
-                min="0"
-                max="22"
-                step="0.5"
-                bind:value={weatherParams.windSpeed}
-                oninput={onManualWeather}
-              />
-            </label>
-            <label class="slider-row">
-              <span class="slider-label"
-                >Heading <span class="slider-value">{weatherParams.windDirection.toFixed(0)}°</span
-                ></span
-              >
-              <input
-                type="range"
-                min="0"
-                max="359"
-                step="1"
-                bind:value={weatherParams.windDirection}
-                oninput={onManualWeather}
-              />
-            </label>
-            <label class="slider-row">
-              <span class="slider-label"
-                >Cloud <span class="slider-value"
-                  >{Math.round(weatherParams.cloudCover * 100)}%</span
-                ></span
-              >
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                bind:value={weatherParams.cloudCover}
-                oninput={onManualWeather}
-              />
-            </label>
-            <label class="slider-row">
-              <span class="slider-label"
-                >Humidity <span class="slider-value"
-                  >{Math.round(weatherParams.humidity * 100)}%</span
-                ></span
-              >
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                bind:value={weatherParams.humidity}
-                oninput={onManualWeather}
-              />
-            </label>
-            <label class="slider-row">
-              <span class="slider-label"
-                >Rain <span class="slider-value"
-                  >{Math.round(weatherParams.precipitation * 100)}%</span
-                ></span
-              >
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                bind:value={weatherParams.precipitation}
-                oninput={onManualWeather}
-              />
-            </label>
-            <label class="slider-row">
-              <span class="slider-label"
-                >Glow <span class="slider-value">{skyParams.glowStrength.toFixed(1)}</span></span
-              >
-              <input type="range" min="0" max="3" step="0.1" bind:value={skyParams.glowStrength} />
-            </label>
-          </div>
-        </section>
-
-        <section>
-          <div class="section-title"><span class="comment-prefix">//</span> ocean surface</div>
-          <div class="sliders">
-            <label class="slider-row">
-              <span class="slider-label"
-                >Swell <span class="slider-value">{params.swellScale.toFixed(0)}</span></span
-              >
-              <input type="range" min="8" max="40" step="1" bind:value={params.swellScale} />
-            </label>
-            <label class="slider-row">
-              <span class="slider-label"
-                >Chop <span class="slider-value">{params.chopScale.toFixed(0)}</span></span
-              >
-              <input type="range" min="4" max="24" step="1" bind:value={params.chopScale} />
-            </label>
-            <label class="slider-row">
-              <span class="slider-label"
-                >Crest <span class="slider-value">{params.crestSharpness.toFixed(2)}</span></span
-              >
-              <input
-                type="range"
-                min="0.4"
-                max="2.5"
-                step="0.01"
-                bind:value={params.crestSharpness}
-              />
-            </label>
-            <label class="slider-row">
-              <span class="slider-label"
-                >Reflect <span class="slider-value">{params.reflectionSharpness.toFixed(2)}</span
-                ></span
-              >
-              <input
-                type="range"
-                min="1.2"
-                max="4.5"
-                step="0.05"
-                bind:value={params.reflectionSharpness}
-              />
-            </label>
-            <label class="slider-row">
-              <span class="slider-label"
-                >Shimmer <span class="slider-value">{params.shimmer.toFixed(2)}</span></span
-              >
-              <input type="range" min="0" max="2" step="0.05" bind:value={params.shimmer} />
-            </label>
-            <label class="slider-row">
-              <span class="slider-label"
-                >Speed <span class="slider-value">{params.speed.toFixed(2)}x</span></span
-              >
-              <input type="range" min="0.2" max="2" step="0.05" bind:value={params.speed} />
-            </label>
-            <label class="slider-row">
-              <span class="slider-label"
-                >Sun R. <span class="slider-value">{skyParams.sunRadius.toFixed(1)}</span></span
-              >
-              <input type="range" min="1" max="8" step="0.5" bind:value={skyParams.sunRadius} />
-            </label>
-          </div>
-          <p class="eq-detail">
-            Directional swell + wind chop + capillary ripple. Reflection follows facet slope; foam
-            appears where crests exceed the wind-adjusted breaking threshold.
+      <details class="advanced-controls">
+        <summary>Advanced model controls</summary>
+        <div class="equation">
+          <p class="eq-line">
+            <em>&Psi;</em> = <em>S</em><sub>swell</sub> + <em>W</em><sub>chop</sub> +
+            <em>A</em><sub>cloud</sub> + <em>L</em><sub>sun</sub>
           </p>
-        </section>
-      </div>
+          <p class="eq-detail">
+            One advected system: wind couples the wave spectrum, foam, cloud field, rain, and
+            glitter path.
+          </p>
+        </div>
+
+        <div class="parameter-groups">
+          <section>
+            <div class="section-title"><span class="comment-prefix">//</span> sky + weather</div>
+            <div class="sliders">
+              <label class="slider-row">
+                <span class="slider-label"
+                  >Heading <span class="slider-value"
+                    >{weatherParams.windDirection.toFixed(0)}°</span
+                  ></span
+                >
+                <input
+                  type="range"
+                  min="0"
+                  max="359"
+                  step="1"
+                  bind:value={weatherParams.windDirection}
+                  oninput={onManualWeather}
+                />
+              </label>
+
+              <label class="slider-row">
+                <span class="slider-label"
+                  >Humidity <span class="slider-value"
+                    >{Math.round(weatherParams.humidity * 100)}%</span
+                  ></span
+                >
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  bind:value={weatherParams.humidity}
+                  oninput={onManualWeather}
+                />
+              </label>
+              <label class="slider-row">
+                <span class="slider-label"
+                  >Rain <span class="slider-value"
+                    >{Math.round(weatherParams.precipitation * 100)}%</span
+                  ></span
+                >
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  bind:value={weatherParams.precipitation}
+                  oninput={onManualWeather}
+                />
+              </label>
+              <label class="slider-row">
+                <span class="slider-label"
+                  >Glow <span class="slider-value">{skyParams.glowStrength.toFixed(1)}</span></span
+                >
+                <input
+                  type="range"
+                  min="0"
+                  max="3"
+                  step="0.1"
+                  bind:value={skyParams.glowStrength}
+                />
+              </label>
+            </div>
+          </section>
+
+          <section>
+            <div class="section-title"><span class="comment-prefix">//</span> ocean surface</div>
+            <div class="sliders">
+              <label class="slider-row">
+                <span class="slider-label"
+                  >Swell <span class="slider-value">{params.swellScale.toFixed(0)}</span></span
+                >
+                <input type="range" min="8" max="40" step="1" bind:value={params.swellScale} />
+              </label>
+              <label class="slider-row">
+                <span class="slider-label"
+                  >Chop <span class="slider-value">{params.chopScale.toFixed(0)}</span></span
+                >
+                <input type="range" min="4" max="24" step="1" bind:value={params.chopScale} />
+              </label>
+              <label class="slider-row">
+                <span class="slider-label"
+                  >Crest <span class="slider-value">{params.crestSharpness.toFixed(2)}</span></span
+                >
+                <input
+                  type="range"
+                  min="0.4"
+                  max="2.5"
+                  step="0.01"
+                  bind:value={params.crestSharpness}
+                />
+              </label>
+              <label class="slider-row">
+                <span class="slider-label"
+                  >Reflect <span class="slider-value">{params.reflectionSharpness.toFixed(2)}</span
+                  ></span
+                >
+                <input
+                  type="range"
+                  min="1.2"
+                  max="4.5"
+                  step="0.05"
+                  bind:value={params.reflectionSharpness}
+                />
+              </label>
+              <label class="slider-row">
+                <span class="slider-label"
+                  >Shimmer <span class="slider-value">{params.shimmer.toFixed(2)}</span></span
+                >
+                <input type="range" min="0" max="2" step="0.05" bind:value={params.shimmer} />
+              </label>
+              <label class="slider-row">
+                <span class="slider-label"
+                  >Speed <span class="slider-value">{params.speed.toFixed(2)}x</span></span
+                >
+                <input type="range" min="0.2" max="2" step="0.05" bind:value={params.speed} />
+              </label>
+              <label class="slider-row">
+                <span class="slider-label"
+                  >Sun R. <span class="slider-value">{skyParams.sunRadius.toFixed(1)}</span></span
+                >
+                <input type="range" min="1" max="8" step="0.5" bind:value={skyParams.sunRadius} />
+              </label>
+            </div>
+            <p class="eq-detail">
+              Directional swell + wind chop + capillary ripple. Reflection follows facet slope; foam
+              appears where crests exceed the wind-adjusted breaking threshold.
+            </p>
+          </section>
+        </div>
+      </details>
 
       <button class="reset" onclick={reset}>
         <span class="comment-prefix">//</span> reset defaults
@@ -358,6 +369,19 @@
 </div>
 
 <style>
+  .everyday-controls {
+    margin: 1rem 0;
+  }
+  .advanced-controls summary {
+    cursor: pointer;
+    padding: 0.5rem 0;
+    color: var(--color-theme-muted);
+  }
+  .advanced-controls summary:focus-visible {
+    outline: 2px solid var(--color-sunset-amber-400);
+    outline-offset: 3px;
+  }
+
   .wave-controls {
     margin-top: 0.5rem;
     text-align: center;
