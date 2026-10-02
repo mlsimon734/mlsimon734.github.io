@@ -2,14 +2,14 @@
   import { fly } from "svelte/transition";
   import { ArrowUpRight } from "lucide-svelte";
   import { SiMeta } from "@icons-pack/svelte-simple-icons";
-  import AsciiHorizon from "$lib/components/AsciiHorizon.svelte";
-  import AsciiDivider from "$lib/components/AsciiDivider.svelte";
-  import SocialLinks from "$lib/components/SocialLinks.svelte";
-  import OrgChip from "$lib/components/OrgChip.svelte";
-  import ConfluentLogo from "$lib/components/logos/ConfluentLogo.svelte";
-  import ExcavaiteLogo from "$lib/components/logos/ExcavaiteLogo.svelte";
-  import Seo from "$lib/components/Seo.svelte";
-  import { inview } from "$lib/actions/inview";
+  import AsciiHorizon from "#lib/components/AsciiHorizon.svelte";
+  import AsciiDivider from "#lib/components/AsciiDivider.svelte";
+  import SocialLinks from "#lib/components/SocialLinks.svelte";
+  import OrgChip from "#lib/components/OrgChip.svelte";
+  import ConfluentLogo from "#lib/components/logos/ConfluentLogo.svelte";
+  import ExcavaiteLogo from "#lib/components/logos/ExcavaiteLogo.svelte";
+  import Seo from "#lib/components/Seo.svelte";
+  import { inview } from "#lib/actions/inview.js";
 
   const orgColor = {
     ucla: { light: "#2774AE", dark: "#5fa3d9" },

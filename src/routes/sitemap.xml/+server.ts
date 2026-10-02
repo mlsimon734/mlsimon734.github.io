@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { listPosts } from "$lib/posts";
+import { listPosts } from "#lib/posts.js";
 
 // Prerendered at build time by adapter-static; git is only needed then.
 export const prerender = true;

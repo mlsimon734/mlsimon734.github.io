@@ -1,8 +1,8 @@
 <script lang="ts">
   import { slide } from "svelte/transition";
-  import AsciiDivider from "$lib/components/AsciiDivider.svelte";
-  import Seo from "$lib/components/Seo.svelte";
-  import { inview } from "$lib/actions/inview";
+  import AsciiDivider from "#lib/components/AsciiDivider.svelte";
+  import Seo from "#lib/components/Seo.svelte";
+  import { inview } from "#lib/actions/inview.js";
 
   type Entry = {
     period: string;

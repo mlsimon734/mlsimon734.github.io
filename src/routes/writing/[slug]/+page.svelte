@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ArrowLeft } from "lucide-svelte";
-  import Seo from "$lib/components/Seo.svelte";
-  import { inview } from "$lib/actions/inview";
+  import Seo from "#lib/components/Seo.svelte";
+  import { inview } from "#lib/actions/inview.js";
 
   let { data } = $props();
 

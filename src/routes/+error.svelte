@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
-  import AsciiHorizon from "$lib/components/AsciiHorizon.svelte";
-  import Seo from "$lib/components/Seo.svelte";
+  import AsciiHorizon from "#lib/components/AsciiHorizon.svelte";
+  import Seo from "#lib/components/Seo.svelte";
 </script>
 
 <Seo

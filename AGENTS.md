@@ -6,7 +6,7 @@ Use `bun` — not `npm`. All commands: `bun run`, `bun install`, `bunx`, etc.
 
 ## Stack
 
-- SvelteKit 2 + Svelte 5 + Tailwind CSS 4 + TypeScript
+- SvelteKit 3 + Svelte 5 + Tailwind CSS 4 + TypeScript
 - Static site (GitHub Pages) via `@sveltejs/adapter-static`
 
 ## Linting & Formatting
