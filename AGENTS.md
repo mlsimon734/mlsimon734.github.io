@@ -9,6 +9,15 @@ Use `bun` — not `npm`. All commands: `bun run`, `bun install`, `bunx`, etc.
 - SvelteKit 3 + Svelte 5 + Tailwind CSS 4 + TypeScript
 - Static site (GitHub Pages) via `@sveltejs/adapter-static`
 
+## TypeScript
+
+`bun run check` and `bun run check:watch` use TypeScript 7 through `svelte-check --tsgo`. The native
+compiler is installed as the `@typescript/native` alias. Keep `typescript` on version 6 because
+SvelteKit and Svelte tooling still require its JavaScript compiler API. This is the
+[supported Svelte setup](https://github.com/sveltejs/language-tools/blob/master/packages/svelte-check/README.md#typescript-7-supports).
+The Renovate rule targets only the `typescript` dependency name so the native alias can receive 7.x
+updates.
+
 ## Linting & Formatting
 
 - `bun run lint` — oxlint (lints `<script>` blocks of `.svelte` plus `.ts`/`.js`)
