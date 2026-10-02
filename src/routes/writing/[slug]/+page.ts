@@ -1,13 +1,14 @@
 import { error } from "@sveltejs/kit";
 import { listPosts, loadPost } from "#lib/posts.js";
+import type { EntryGenerator } from "./$types";
 
 export const prerender = true;
 
 /** Prerender every published post, including any the crawler can't reach from a link. */
-export async function entries() {
+export const entries: EntryGenerator = async () => {
   const posts = await listPosts();
   return posts.map(({ slug }) => ({ slug }));
-}
+};
 
 export async function load({ params }) {
   const post = await loadPost(params.slug);
