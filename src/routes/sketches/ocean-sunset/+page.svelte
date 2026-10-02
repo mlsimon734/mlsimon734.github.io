@@ -1,6 +1,6 @@
 <script lang="ts">
-  import OceanSunsetParticles from "$lib/components/OceanSunsetParticles.svelte";
-  import Seo from "$lib/components/Seo.svelte";
+  import OceanSunsetParticles from "#lib/components/OceanSunsetParticles.svelte";
+  import Seo from "#lib/components/Seo.svelte";
 </script>
 
 <Seo

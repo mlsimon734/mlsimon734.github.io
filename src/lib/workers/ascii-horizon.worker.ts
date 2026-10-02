@@ -6,12 +6,12 @@ import {
   type SkyParams,
   type WaveParams,
   type WeatherParams,
-} from "$lib/horizon";
-import { renderBackgroundPixels } from "$lib/horizon/background";
-import { encodeRuns, type MonoMetrics, type ZonePalette } from "$lib/horizon/render";
-import { sampleAtmosphereGrid, type AtmosphereSample } from "$lib/horizon/atmosphere";
-import { computeWorldParams } from "$lib/horizon/world";
-import type { WorldParams } from "$lib/horizon/types";
+} from "#lib/horizon/index.js";
+import { renderBackgroundPixels } from "#lib/horizon/background.js";
+import { encodeRuns, type MonoMetrics, type ZonePalette } from "#lib/horizon/render.js";
+import { sampleAtmosphereGrid, type AtmosphereSample } from "#lib/horizon/atmosphere.js";
+import { computeWorldParams } from "#lib/horizon/world.js";
+import type { WorldParams } from "#lib/horizon/types.js";
 
 interface InitMessage {
   type: "init";

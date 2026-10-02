@@ -8,8 +8,8 @@
     type SkyParams,
     type WeatherParams,
     type WeatherSource,
-  } from "$lib/horizon";
-  import { fetchLosAngelesWeather, type LosAngelesWeather } from "$lib/horizon/weather";
+  } from "#lib/horizon/index.js";
+  import { fetchLosAngelesWeather, type LosAngelesWeather } from "#lib/horizon/weather.js";
   import AsciiHorizonWorkerCanvas from "./AsciiHorizonWorkerCanvas.svelte";
   import MotionControl from "./MotionControl.svelte";
   import WaveControls from "./WaveControls.svelte";

@@ -1,10 +1,14 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { DEFAULT_SKY_PARAMS, DEFAULT_WAVE_PARAMS, DEFAULT_WEATHER_PARAMS } from "$lib/horizon";
-  import { resolveZonePalette } from "$lib/horizon/render";
-  import { DEFAULT_PARTICLE_PARAMS, type ParticleParams } from "$lib/particles/types";
-  import { buildParametricSunset } from "$lib/particles/source-parametric";
-  import { PARTICLE_VERT, PARTICLE_FRAG } from "$lib/particles/shaders";
+  import {
+    DEFAULT_SKY_PARAMS,
+    DEFAULT_WAVE_PARAMS,
+    DEFAULT_WEATHER_PARAMS,
+  } from "#lib/horizon/index.js";
+  import { resolveZonePalette } from "#lib/horizon/render.js";
+  import { DEFAULT_PARTICLE_PARAMS, type ParticleParams } from "#lib/particles/types.js";
+  import { buildParametricSunset } from "#lib/particles/source-parametric.js";
+  import { PARTICLE_VERT, PARTICLE_FRAG } from "#lib/particles/shaders.js";
   import AsciiHorizonDom from "./AsciiHorizonDom.svelte";
   import MotionControl from "./MotionControl.svelte";
   import * as THREE from "three";

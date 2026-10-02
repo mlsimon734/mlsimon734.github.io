@@ -1,6 +1,6 @@
-import { computeWorldParams } from "$lib/horizon/world";
-import type { ZonePalette } from "$lib/horizon/render";
-import { parseCssColor } from "$lib/horizon/glyph-atlas";
+import { computeWorldParams } from "#lib/horizon/world.js";
+import type { ZonePalette } from "#lib/horizon/render.js";
+import { parseCssColor } from "#lib/horizon/glyph-atlas.js";
 import type { ParticleCloud } from "./types";
 
 type Color = [number, number, number];
