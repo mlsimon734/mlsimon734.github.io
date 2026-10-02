@@ -38,7 +38,8 @@
     "@thi.ng/pixel": "^7.5.23",
     "@thi.ng/pixel-dither": "^1.1.191",
     "lucide-svelte": "^1.0.0",
-    "three": "^0.186.0"
+    "three": "^0.186.0",
+    "vgpu": "0.5.0"
   },
   "imports": {
     "#lib/*": "./src/lib/*"
