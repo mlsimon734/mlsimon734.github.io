@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fly } from "svelte/transition";
-  import { ArrowUpRight } from "lucide-svelte";
+  import { ArrowUpRight } from "@lucide/svelte";
   import { SiMeta } from "@icons-pack/svelte-simple-icons";
   import AsciiHorizon from "#lib/components/AsciiHorizon.svelte";
   import AsciiDivider from "#lib/components/AsciiDivider.svelte";
