@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowLeft } from "lucide-svelte";
+  import { ArrowLeft } from "@lucide/svelte";
   import Seo from "#lib/components/Seo.svelte";
   import { inview } from "#lib/actions/inview.js";
 
