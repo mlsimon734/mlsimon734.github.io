@@ -45,8 +45,8 @@ export interface MonoMetrics {
   cssHeight: number;
 }
 
-export const CANVAS_FONT_SIZE = 11;
-export const CANVAS_LINE_HEIGHT = 1.15;
+const CANVAS_FONT_SIZE = 11;
+const CANVAS_LINE_HEIGHT = 1.15;
 
 const ZONE_VARIABLES: Record<AsciiCell["zone"], string> = {
   star: "--color-horizon-star",

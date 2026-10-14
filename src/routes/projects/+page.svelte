@@ -29,8 +29,8 @@
     {
       name: "AsciiHorizon (this site)",
       href: "https://github.com/mlsimon734/mlsimon734.github.io",
-      desc: "A real-time animated ASCII sunset rendered three different ways: DOM, WebGL shader with a glyph atlas, and an OffscreenCanvas worker. Wave equations driven by LA local time, dithered into Braille and ASCII zones. The personality glue holding the rest of this site together.",
-      stack: ["Svelte 5", "TypeScript", "WebGL", "Web Workers"],
+      desc: "A real-time animated ASCII sunset rendered on an OffscreenCanvas worker, with a DOM renderer as fallback. Wave equations driven by LA local time and live weather, dithered into Braille and ASCII zones. The personality glue holding the rest of this site together.",
+      stack: ["Svelte 5", "TypeScript", "Canvas", "Web Workers"],
       period: "2025 –",
     },
   ];

@@ -59,7 +59,7 @@ function precipitationFloorForCode(code: number): number {
   return 0;
 }
 
-export function mapOpenMeteoWeather(payload: OpenMeteoResponse): LosAngelesWeather {
+function mapOpenMeteoWeather(payload: OpenMeteoResponse): LosAngelesWeather {
   const current = payload.current;
   if (!current || typeof current.time !== "string") {
     throw new Error("Los Angeles weather has no current model time.");
