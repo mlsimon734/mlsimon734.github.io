@@ -1,5 +1,5 @@
-import { listPosts } from "$lib/posts";
-import { dev } from "$app/environment";
+import { listPosts } from "#lib/posts.js";
+import { dev } from "$app/env";
 
 export const prerender = true;
 

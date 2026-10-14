@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { page } from "$app/state";
-  import { Moon, Sun } from "lucide-svelte";
+  import { Moon, Sun } from "@lucide/svelte";
 
   const THEME_STORAGE_KEY = "theme";
 

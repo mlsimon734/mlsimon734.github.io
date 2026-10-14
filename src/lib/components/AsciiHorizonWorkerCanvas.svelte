@@ -6,13 +6,13 @@
     type SkyParams,
     type WaveParams,
     type WeatherParams,
-  } from "$lib/horizon";
+  } from "#lib/horizon/index.js";
   import {
     createMonoMetrics,
     resolveZonePalette,
     type MonoMetrics,
     type ZonePalette,
-  } from "$lib/horizon/render";
+  } from "#lib/horizon/render.js";
   import AsciiHorizonDom from "./AsciiHorizonDom.svelte";
 
   let {

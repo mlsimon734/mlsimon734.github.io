@@ -8,8 +8,8 @@
     type SkyParams,
     type WeatherParams,
     type WeatherSource,
-  } from "$lib/horizon";
-  import { getLosAngelesHours } from "$lib/horizon/world";
+  } from "#lib/horizon/index.js";
+  import { getLosAngelesHours } from "#lib/horizon/world.js";
 
   let {
     params = $bindable(),

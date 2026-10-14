@@ -7,6 +7,6 @@
   "plugins": ["prettier-plugin-svelte", "prettier-plugin-tailwindcss"],
   "overrides": [
     { "files": "*.svelte", "options": { "parser": "svelte" } },
-    { "files": "*.md", "options": { "proseWrap": "always", "printWidth": 80 } }
+    { "files": "*.md", "options": { "proseWrap": "always" } }
   ]
 }

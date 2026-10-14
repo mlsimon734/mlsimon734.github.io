@@ -1,4 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"]
+  "extends": ["config:recommended"],
+  "packageRules": [
+    {
+      "description": "Keep the Svelte compiler API on TypeScript 6; @typescript/native runs TypeScript 7 checks",
+      "matchDepNames": ["typescript"],
+      "allowedVersions": "<7.0.0"
+    }
+  ]
 }

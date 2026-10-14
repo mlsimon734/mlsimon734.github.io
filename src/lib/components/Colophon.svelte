@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { fly } from "svelte/transition";
-  import { X } from "lucide-svelte";
+  import { X } from "@lucide/svelte";
 
   const quotes = [
     {
