@@ -126,9 +126,7 @@
   .horizon-card {
     background: var(--color-horizon-bg);
     border: 1px solid var(--color-theme-border);
-    border-radius: 0.75rem;
     overflow: hidden;
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
     transition: background-color 0.25s;
   }
 </style>

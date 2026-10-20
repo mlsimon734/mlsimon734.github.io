@@ -32,7 +32,7 @@
     <h1 class="essay-title">{data.meta.title}</h1>
     <p class="essay-meta">
       <time datetime={data.meta.date}>{formatted}</time>
-      {#if data.meta.draft}<span class="essay-draft">draft</span>{/if}
+      {#if data.meta.draft}<span>· draft</span>{/if}
     </p>
   </header>
 
@@ -46,15 +46,14 @@
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
+    font-size: 0.9375rem;
     color: var(--color-theme-muted);
     text-decoration: none;
     transition: color 0.2s;
   }
 
   .essay-back:hover {
-    color: var(--color-sunset-amber-500);
+    color: var(--color-theme-heading);
   }
 
   .essay-title {
@@ -71,20 +70,10 @@
   .essay-meta {
     display: flex;
     align-items: center;
-    gap: 0.625rem;
+    gap: 0.375rem;
     margin-top: 0.75rem;
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
-    color: var(--color-sunset-amber-500);
-  }
-
-  .essay-draft {
-    border: 1px solid var(--color-theme-border);
-    border-radius: 0.25rem;
-    padding: 0.0625rem 0.375rem;
+    font-size: 0.9375rem;
     color: var(--color-theme-subtle);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
   }
 </style>

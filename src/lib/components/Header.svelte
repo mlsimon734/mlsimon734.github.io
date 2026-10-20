@@ -97,7 +97,9 @@
 
   .name:hover {
     text-decoration: underline;
-    text-decoration-color: var(--color-sunset-amber-400);
+    text-decoration-thickness: 1px;
+    text-decoration-color: var(--color-theme-accent);
+    text-underline-offset: 3px;
   }
 
   .nav-links {
@@ -116,17 +118,12 @@
       text-decoration-color 0.2s;
   }
 
-  .nav-link:hover {
-    color: var(--color-theme-heading);
-    text-decoration: underline;
-    text-decoration-color: var(--color-sunset-amber-400);
-    text-underline-offset: 3px;
-  }
-
+  .nav-link:hover,
   .active {
     color: var(--color-theme-heading);
     text-decoration: underline;
-    text-decoration-color: var(--color-sunset-amber-400);
+    text-decoration-thickness: 1px;
+    text-decoration-color: var(--color-theme-accent);
     text-underline-offset: 3px;
   }
 
@@ -134,31 +131,24 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.9rem;
+    gap: 1.25rem;
   }
 
   .theme-toggle {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    padding: 0.35rem 0.6rem;
-    border: 1px solid var(--color-theme-border);
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-theme-surface) 84%, transparent);
+    padding: 0;
+    border: 0;
+    background: none;
     color: var(--color-theme-muted);
     font: inherit;
-    line-height: 1;
     cursor: pointer;
-    transition:
-      color 0.2s,
-      border-color 0.2s,
-      background-color 0.2s;
+    transition: color 0.2s;
   }
 
   .theme-toggle:hover {
     color: var(--color-theme-heading);
-    border-color: var(--color-sunset-amber-400);
-    background: var(--color-theme-hover);
   }
 
   @media (max-width: 420px) {

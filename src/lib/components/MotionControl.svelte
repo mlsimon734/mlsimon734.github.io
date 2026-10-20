@@ -30,7 +30,7 @@
   .motion-control {
     display: flex;
     justify-content: flex-end;
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     color: var(--color-theme-muted);
   }
   button {

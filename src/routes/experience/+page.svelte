@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { slide } from "svelte/transition";
-  import AsciiDivider from "#lib/components/AsciiDivider.svelte";
   import Seo from "#lib/components/Seo.svelte";
   import { inview } from "#lib/actions/inview.js";
 
@@ -10,7 +8,6 @@
     org: string;
     location?: string;
     bullets: string[];
-    defaultOpen?: boolean;
   };
 
   const education: Entry[] = [
@@ -44,7 +41,6 @@
       period: "2024–2026",
       role: "CTO & Co-founder",
       org: "Excavaite",
-      defaultOpen: true,
       bullets: [
         "Built terabyte-scale patent corpus with RaBitQ-indexed vector search.",
         "Designed agentic systems for patent leakage prevention, automated patent drafting, and claim-chart generation; instrumented automated evals to gate model and prompt changes.",
@@ -55,7 +51,6 @@
       period: "2023–2024",
       role: "Undergraduate Researcher",
       org: "VAIL Lab",
-      defaultOpen: true,
       bullets: [
         "Worked on diffusion models for synthetic driving-data generation, resulting in a NeurIPS 2024 publication.",
         "Created a unified terabyte-scale driving dataset by combining 4K YouTube driving footage with open-source datasets.",
@@ -184,8 +179,6 @@
     },
   ];
 
-  let expOpen = $state(experience.map((e) => !!e.defaultOpen));
-
   const service: Entry[] = [
     {
       period: "2026",
@@ -212,9 +205,7 @@
   <h1 class="sr-only">Experience</h1>
 
   <section class="reveal" use:inview>
-    <h2 class="heading2">
-      <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>education
-    </h2>
+    <h2 class="heading2">Education</h2>
     {#each education as e}
       <div class="cv-row">
         <span class="cv-period">{e.period}</span>
@@ -235,47 +226,28 @@
     {/each}
   </section>
 
-  <AsciiDivider />
-
   <section class="reveal mt-16" use:inview>
-    <h2 class="heading2">
-      <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>experience
-    </h2>
-    {#each experience as e, i}
+    <h2 class="heading2">Experience</h2>
+    {#each experience as e}
       <div class="cv-row">
         <span class="cv-period">{e.period}</span>
         <div class="cv-content">
-          <button
-            type="button"
-            class="exp-toggle"
-            aria-expanded={expOpen[i]}
-            aria-controls={`exp-bullets-${i}`}
-            onclick={() => (expOpen[i] = !expOpen[i])}
-          >
-            <span>
-              <span class="cv-role">{e.role}</span>
-              <span class="cv-org"> · {e.org}</span>
-            </span>
-            <span class="exp-toggle-icon" aria-hidden="true">{expOpen[i] ? "−" : "+"}</span>
-          </button>
-          {#if expOpen[i]}
-            <ul id={`exp-bullets-${i}`} transition:slide={{ duration: 180 }}>
-              {#each e.bullets as b}
-                <li>{b}</li>
-              {/each}
-            </ul>
-          {/if}
+          <div>
+            <span class="cv-role">{e.role}</span>
+            <span class="cv-org"> · {e.org}</span>
+          </div>
+          <ul>
+            {#each e.bullets as b}
+              <li>{b}</li>
+            {/each}
+          </ul>
         </div>
       </div>
     {/each}
   </section>
 
-  <AsciiDivider />
-
   <section class="reveal mt-16" use:inview>
-    <h2 class="heading2">
-      <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>publications
-    </h2>
+    <h2 class="heading2">Publications</h2>
     {#each publications as p}
       <div class="cv-row">
         <span class="cv-period">{p.year}</span>
@@ -286,7 +258,7 @@
             {:else}
               {p.title}
             {/if}
-            {#if p.status}<span class="pub-status">[{p.status}]</span>{/if}
+            {#if p.status}<span class="pub-status">{p.status}</span>{/if}
           </div>
           <div class="pub-meta">
             <span>{p.authors}</span>
@@ -297,13 +269,8 @@
     {/each}
   </section>
 
-  <AsciiDivider />
-
   <section class="reveal mt-16" use:inview>
-    <h2 class="heading2">
-      <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>awards &
-      honors
-    </h2>
+    <h2 class="heading2">Awards &amp; honors</h2>
     {#each awards as a}
       <div class="cv-row">
         <span class="cv-period">{a.period}</span>
@@ -312,13 +279,8 @@
     {/each}
   </section>
 
-  <AsciiDivider />
-
   <section class="reveal mt-16" use:inview>
-    <h2 class="heading2">
-      <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>service &
-      teaching
-    </h2>
+    <h2 class="heading2">Service &amp; teaching</h2>
     {#each service as e}
       <div class="cv-row">
         <span class="cv-period">{e.period}</span>
@@ -338,12 +300,10 @@
   </section>
 
   <!--
-  <AsciiDivider />
 
   <section class="reveal mt-16" use:inview>
     <h2 class="heading2">
-      <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>technical
-      coursework
+      Technical coursework
     </h2>
     {#each coursework as c}
       <div class="cv-row">
@@ -366,10 +326,11 @@
   }
 
   .pub-status {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--color-sunset-amber-500);
-    margin-left: 0.35rem;
+    margin-left: 0.25rem;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--color-theme-subtle);
   }
 
   .pub-meta {
@@ -380,36 +341,5 @@
 
   .pub-venue {
     color: var(--color-theme-subtle);
-  }
-
-  .exp-toggle {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    width: 100%;
-    background: none;
-    border: 0;
-    padding: 0;
-    font: inherit;
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .exp-toggle:hover .cv-role,
-  .exp-toggle:focus-visible .cv-role {
-    color: var(--color-sunset-amber-500);
-  }
-
-  .exp-toggle-icon {
-    font-family: var(--font-mono);
-    font-size: 0.875rem;
-    color: var(--color-theme-subtle);
-    margin-left: 0.75rem;
-    transition: color 120ms;
-  }
-
-  .exp-toggle:hover .exp-toggle-icon {
-    color: var(--color-sunset-amber-500);
   }
 </style>

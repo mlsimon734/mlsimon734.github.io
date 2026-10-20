@@ -3,7 +3,6 @@
   import { ArrowUpRight } from "@lucide/svelte";
   import { SiMeta } from "@icons-pack/svelte-simple-icons";
   import AsciiHorizon from "#lib/components/AsciiHorizon.svelte";
-  import AsciiDivider from "#lib/components/AsciiDivider.svelte";
   import SocialLinks from "#lib/components/SocialLinks.svelte";
   import OrgChip from "#lib/components/OrgChip.svelte";
   import ConfluentLogo from "#lib/components/logos/ConfluentLogo.svelte";
@@ -72,17 +71,17 @@
 <div class="layout-md text-lg">
   <h1 class="sr-only">Michael Simon</h1>
 
-  <header class="home-header" in:fly={{ y: 20, duration: 800, delay: 200 }}>
+  <header class="home-header" in:fly={{ y: 8, duration: 400, delay: 100 }}>
     <div class="home-header-text">
       <p class="home-tagline">
-        <span class="muted">is an</span> aspiring polymath,<span class="muted"> </span> <br />
+        Aspiring polymath<span class="muted">,</span> <br />
         researcher<span class="muted">,</span> engineer<span class="muted">,</span> <br />
         <span class="muted">and</span> builder<span class="muted">.</span>
       </p>
 
       <div class="home-bio mt-6 space-y-5">
         <p>
-          I'm an incoming (accidental) CS PhD student at
+          I'm an (accidental) CS PhD student at
           <OrgChip
             name="UCLA"
             href="https://www.cs.ucla.edu"
@@ -144,7 +143,8 @@
               logoSrc="/logos/agrofocal.ico"
             />,
           </span>
-          and explored diffusion for autonomous-vehicle perception and sythetic data augmentation in the
+          and explored diffusion for autonomous-vehicle perception and synthetic data augmentation in
+          the
           <OrgChip
             name="UCLA VAIL Lab"
             href="https://bzhou.ucla.edu"
@@ -172,19 +172,14 @@
   </header>
 
   <!--
-  <AsciiDivider />
-
   <section class="reveal mt-16 sm:mt-20" use:inview>
-    <h2 class="heading2">
-      <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>selected
-      work
-    </h2>
+    <h2 class="heading2">Selected work</h2>
     <ul class="space-y-2">
       {#each selectedWork as item}
         <li>
           <a href={item.href} target="_blank" rel="noopener noreferrer" class="work-link">
             <span class="work-name">
-              {item.name}
+              <span class="work-title">{item.name}</span>
               <ArrowUpRight size={18} class="work-arrow" />
             </span>
             <span class="work-desc">
@@ -200,10 +195,8 @@
   </section>
   -->
 
-  <AsciiDivider />
-
-  <section class="reveal mt-16 sm:mt-20" use:inview>
-    <div in:fly={{ y: 20, duration: 800, delay: 200 }}>
+  <section class="horizon-section reveal" use:inview>
+    <div in:fly={{ y: 8, duration: 400, delay: 100 }}>
       <AsciiHorizon />
     </div>
   </section>
@@ -219,15 +212,16 @@
 
   .home-tagline {
     color: var(--color-theme-heading);
-    font-size: 1.5rem;
-    font-weight: 600;
-    line-height: 1.45;
+    font-family: var(--font-serif);
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
     margin: 0;
   }
 
   .home-tagline .muted {
     color: var(--color-theme-subtle);
-    font-weight: 400;
   }
 
   .home-bio {
@@ -248,10 +242,12 @@
   .home-headshot {
     width: 240px;
     height: 300px;
-    border-radius: 0.75rem;
+    border-radius: 0.375rem;
     object-fit: cover;
-    border: 1px solid var(--color-theme-border);
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  }
+
+  .horizon-section {
+    margin-top: 4rem;
   }
 
   @media (max-width: 640px) {
@@ -261,11 +257,14 @@
     .home-headshot {
       width: 180px;
       height: 225px;
-      order: -1;
       justify-self: start;
     }
     .home-tagline {
-      font-size: 1.25rem;
+      font-size: 1.625rem;
+    }
+
+    .horizon-section {
+      margin-top: 3rem;
     }
   }
 </style>

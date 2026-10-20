@@ -293,8 +293,7 @@
     flex-wrap: wrap;
     gap: 0.15rem 1.6em;
     margin: 0;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: 0.8125rem;
     line-height: 1.6;
     color: var(--color-theme-subtle);
     font-variant-numeric: tabular-nums;
