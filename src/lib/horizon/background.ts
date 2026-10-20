@@ -73,7 +73,7 @@ export function renderBackgroundPixels(
   palette: BackgroundPalette,
   world: WorldParams,
   weather: WeatherParams = DEFAULT_WEATHER_PARAMS,
-  atmosphereGrid = sampleAtmosphereGrid(config, world, weather),
+  atmosphereGrid = sampleAtmosphereGrid(config, world.waterTime, weather),
   skyParams: SkyParams = DEFAULT_SKY_PARAMS,
 ): Uint8ClampedArray<ArrayBuffer> {
   const { width, height } = config;
