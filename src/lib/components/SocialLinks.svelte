@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Mail, GraduationCap, FileText } from "lucide-svelte";
+  import { Mail, GraduationCap, FileText } from "@lucide/svelte";
   import { SiGithub, SiX } from "@icons-pack/svelte-simple-icons";
   import SiLinkedin from "./SiLinkedin.svelte";
 

@@ -161,13 +161,16 @@
     let frameId = 0;
     let previous = performance.now();
     let pending = 0;
-    const interval = 1000 / 30;
+    // Up to 60 fps: the grains stream several pixels a frame, which steps visibly at 30. The
+    // threshold sits below a full interval so a 60 Hz tick that lands early still renders, while a
+    // 120 Hz display renders every other tick.
+    const interval = 1000 / 60;
     const tick = (now: number) => {
       pending += Math.max(0, now - previous);
       previous = now;
-      if (pending + 0.001 >= interval) {
-        const elapsed = Math.floor((pending + 0.001) / interval) * interval;
-        pending = Math.max(0, pending - elapsed);
+      if (pending >= interval * 0.75) {
+        const elapsed = pending;
+        pending = 0;
         try {
           render(Math.min(0.1, elapsed / 1000));
         } catch (error) {
@@ -212,7 +215,7 @@
     {#if failed}
       <div class="status" role="status">
         <p>This study needs WebGPU, which is unavailable here.</p>
-        <a href="/sketches/ocean-sunset" class="link">View the original ocean</a>
+        <a href="/sketches/ocean-sunset/webgl" class="link">View the WebGL version</a>
       </div>
     {:else if !renderer}
       <p class="status" role="status">Gathering the last light…</p>

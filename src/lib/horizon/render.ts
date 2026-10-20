@@ -23,8 +23,8 @@ export interface MonoMetrics {
   cssHeight: number;
 }
 
-export const CANVAS_FONT_SIZE = 11;
-export const CANVAS_LINE_HEIGHT = 1.15;
+const CANVAS_FONT_SIZE = 11;
+const CANVAS_LINE_HEIGHT = 1.15;
 
 const ZONES: readonly Zone[] = [
   "star",

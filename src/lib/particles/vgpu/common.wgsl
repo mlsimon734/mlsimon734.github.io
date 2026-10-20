@@ -89,6 +89,58 @@ fn simplex(v: vec3f) -> f32 {
   return 105.0 * dot(m * m, vec4f(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
 }
 
+// The same noise with its analytic gradient (Gustavson's extension): xyz is the gradient, w the
+// value. It shares the lattice setup above; only the falloff sum differs.
+fn simplexGrad(v: vec3f) -> vec4f {
+  let C = vec2f(1.0 / 6.0, 1.0 / 3.0);
+  var i = floor(v + dot(v, vec3f(C.y)));
+  let x0 = v - i + dot(i, vec3f(C.x));
+  let g = step(x0.yzx, x0.xyz);
+  let l = 1.0 - g;
+  let i1 = min(g.xyz, l.zxy);
+  let i2 = max(g.xyz, l.zxy);
+  let x1 = x0 - i1 + C.x;
+  let x2 = x0 - i2 + C.y;
+  let x3 = x0 - 0.5;
+  i = mod289v3(i);
+  let p = permute(permute(permute(
+    i.z + vec4f(0.0, i1.z, i2.z, 1.0)) +
+    i.y + vec4f(0.0, i1.y, i2.y, 1.0)) +
+    i.x + vec4f(0.0, i1.x, i2.x, 1.0));
+  let ns = 0.142857142857 * vec3f(2.0, 0.5, 1.0) - vec3f(0.0, 1.0, 0.0);
+  let j = p - 49.0 * floor(p * ns.z * ns.z);
+  let x_ = floor(j * ns.z);
+  let y_ = floor(j - 7.0 * x_);
+  let x = x_ * ns.x + ns.yyyy;
+  let y = y_ * ns.x + ns.yyyy;
+  let h = 1.0 - abs(x) - abs(y);
+  let b0 = vec4f(x.xy, y.xy);
+  let b1 = vec4f(x.zw, y.zw);
+  let s0 = floor(b0) * 2.0 + 1.0;
+  let s1 = floor(b1) * 2.0 + 1.0;
+  let sh = -step(h, vec4f(0.0));
+  let a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+  let a1 = b1.xzyw + s1.xzyw * sh.zzww;
+  var p0 = vec3f(a0.xy, h.x);
+  var p1 = vec3f(a0.zw, h.y);
+  var p2 = vec3f(a1.xy, h.z);
+  var p3 = vec3f(a1.zw, h.w);
+  let norm = 1.79284291400159 - 0.85373472095314 *
+    vec4f(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+  let m = max(0.5 - vec4f(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), vec4f(0.0));
+  let m2 = m * m;
+  let m4 = m2 * m2;
+  let lean = vec4f(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3));
+  let t = m2 * m * lean;
+  let gradient = -8.0 * (t.x * x0 + t.y * x1 + t.z * x2 + t.w * x3) +
+    m4.x * p0 + m4.y * p1 + m4.z * p2 + m4.w * p3;
+  return 105.0 * vec4f(gradient, dot(m4, lean));
+}
+
 fn fbm(p: vec3f, octaves: i32) -> f32 {
   var sum = 0.0;
   var amplitude = 0.5;

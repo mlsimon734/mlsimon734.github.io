@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowUpRight } from "lucide-svelte";
+  import { ArrowUpRight } from "@lucide/svelte";
   import Seo from "#lib/components/Seo.svelte";
   import { inview } from "#lib/actions/inview.js";
 
@@ -29,15 +29,15 @@
     {
       name: "AsciiHorizon (this site)",
       href: "https://github.com/mlsimon734/mlsimon734.github.io",
-      desc: "A real-time animated ASCII sunset rendered off the main thread with an OffscreenCanvas worker. Wave equations driven by LA local time and lunar phase, dithered into Braille and ASCII zones. The personality glue holding the rest of this site together.",
-      stack: ["Svelte 5", "TypeScript", "Web Workers"],
+      desc: "A real-time animated ASCII sunset rendered on an OffscreenCanvas worker, with a DOM renderer as fallback. Waves, sun glitter, moon phase and stars driven by LA local time and live weather. The personality glue holding the rest of this site together.",
+      stack: ["Svelte 5", "TypeScript", "Canvas", "Web Workers"],
       period: "2025 –",
     },
     {
-      name: "Ocean Sunset Particles",
+      name: "Last Light",
       href: "/sketches/ocean-sunset",
-      desc: "A reactive Three.js/WebGL2 point-cloud sketch inspired by three-ml-sharp: dense coastal particles, GPU wave and flow displacement, shaded depth, bloom, and pointer-driven camera parallax.",
-      stack: ["Svelte 5", "Three.js", "GLSL", "WebGL2"],
+      desc: "Santa Monica Bay at the current minute, rebuilt as a million GPU particles in the manner of three-ml-sharp: single-scattering sky, Gerstner waves with Cox–Munk sun glitter, and clouds, wind and haze from live LA weather.",
+      stack: ["Svelte 5", "WebGPU", "WGSL", "vgpu"],
       period: "2026",
     },
   ];
