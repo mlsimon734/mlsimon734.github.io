@@ -20,7 +20,7 @@
     {
       name: "Neon Wood",
       href: "/sketches/neon-forest",
-      desc: "A path through a wood at night, strung with lights, as a million drifting grains: a procedural forest, lit once from its lamps, coming loose in slow swirls of curl noise.",
+      desc: "An overgrown alley at night, strung with lights, as a million drifting grains: one generated image, given depth by MoGe-2, coming loose in slow swirls of curl noise.",
       aside: "WebGPU",
     },
     {

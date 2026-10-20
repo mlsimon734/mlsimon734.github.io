@@ -1,7 +1,7 @@
 import { hash, simplex, simplexGrad } from "../vgpu/common.wgsl";
 
 // One invocation per grain, every frame: age it, let the flow carry it, and size it by distance.
-struct Point { position: vec4f, normal: vec4f, color: vec4f }
+struct Point { position: vec4f, color: vec4f }
 struct Lit { position: vec4f, color: vec4f }
 struct Flow {
   camera: vec3f,
@@ -13,7 +13,7 @@ struct Flow {
   pixelSize: f32,
   /** Typical speed in metres per second where the flow is fully open. */
   strength: f32,
-  /** How much of the wood the flow opens: the gate's threshold, −1 (all) to 1 (none). */
+  /** How much of the alley the flow opens: the gate's threshold, −1 (all) to 1 (none). */
   influence: f32,
   count: u32,
 }
@@ -22,20 +22,21 @@ struct Flow {
 @group(0) @binding(2) var<storage, read_write> lit: array<Lit>;
 @group(0) @binding(3) var<uniform> flow: Flow;
 
-// REFERENCE_DEPTH as in scene.ts. Grains shrink on screen as d^−SIZE_POWER, a little faster than
-// scene.ts thickens them (d^0.9 per steradian), so coverage falls gently with distance.
+// REFERENCE_DEPTH as in photo.ts. Grains shrink on screen as d^−SIZE_POWER, a little faster than
+// photo.ts thickens them (d^0.9 per steradian), so coverage falls gently with distance.
 const REFERENCE_DEPTH = 8.0;
 const SIZE_POWER = 0.6;
-// Night air, faintly lit by the city: distance fades everything toward a dim blue, so the near
-// trunks stand out against the far wood as silhouettes. The renderer clears to the same colour.
+// Night air, faintly lit by the city. The photograph has its own haze, so this only settles the
+// far end a little further back. The renderer clears to the same colour.
 const FOG = vec3f(0.03, 0.045, 0.08);
-const FOG_DISTANCE = 16.0;
+const FOG_DISTANCE = 60.0;
 // Swirls a few metres across, slow to change shape.
 const FREQUENCY = 0.32;
-const EMISSIVE = 3.0;
+// MATERIAL.emissive in photo.ts.
+const EMISSIVE = 1.0;
 
 // The curl of three noise potentials, each drifting its own way so the swirls evolve rather than
-// slide. Divergence-free, so the wood thins and gathers without tearing open.
+// slide. Divergence-free, so the alley thins and gathers without tearing open.
 fn curl(p: vec3f, t: f32) -> vec3f {
   let q = p * FREQUENCY;
   let a = simplexGrad(q + vec3f(0.0, t * 0.09, t * 0.05)).xyz;
@@ -52,7 +53,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
   let point = points[index];
   var s = state[index];
   let home = point.position.xyz;
-  let activity = point.normal.w;
+  let emissive = point.color.w == EMISSIVE;
 
   // Each grain lives about a second, at its own pace, and is born again at home.
   s.w += flow.delta * 0.9 * mix(0.85, 1.15, hash(f32(index), 3u));
@@ -60,11 +61,11 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
     s.w = fract(s.w);
     s = vec4f(0.0, 0.0, 0.0, s.w);
   }
-  // As in the source demo, the gate is read at home: whole regions of the wood come loose
-  // together, and the regions wander.
+  // As in the source demo, the gate is read at home: whole regions of the alley come loose
+  // together, and the regions wander. The lights hold still.
   let t = flow.time;
   let opening = simplex(home * 0.11 + vec3f(t * 0.035, t * 0.02, -t * 0.03));
-  let gate = smoothstep(flow.influence, flow.influence + 0.55, opening) * activity;
+  let gate = select(smoothstep(flow.influence, flow.influence + 0.55, opening), 0.0, emissive);
   if (gate > 0.001 && flow.delta > 0.0) {
     let step = flow.delta * flow.strength * gate;
     let p = home + s.xyz;
@@ -78,12 +79,12 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
   var size = 0.0;
   if (depth > 0.1) {
     let age = min(smoothstep(0.0, 0.45, s.w), 1.0 - smoothstep(0.75, 1.0, s.w));
-    // Lights hold steady in finer grains (scene.ts gives them more); the rest swells and fades.
-    let grow = select(age, 0.5, point.color.w == EMISSIVE);
+    // Lights hold steady in finer grains (photo.ts gives them more); the rest swells and fades.
+    let grow = select(age, 0.5, emissive);
     size = flow.pixelSize * point.position.w * grow * pow(depth / REFERENCE_DEPTH, -SIZE_POWER);
   }
   // Lights cut through the haze, and their glow in it is the bloom's to draw.
-  let fog = select(1.0, 0.4, point.color.w == EMISSIVE);
+  let fog = select(1.0, 0.4, emissive);
   let fade = exp(-length(position - flow.camera) * fog / FOG_DISTANCE);
   lit[index] = Lit(vec4f(position, size), vec4f(mix(FOG, point.color.rgb, fade), 1.0));
 }

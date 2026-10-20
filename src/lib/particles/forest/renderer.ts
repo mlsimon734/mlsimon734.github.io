@@ -1,20 +1,11 @@
 /// <reference types="@webgpu/types" />
 import { compute, draw, effect, frame, init, sampler, storage, surface, target } from "vgpu";
 import { PerspectiveCamera, Vector3, WebGPUCoordinateSystem } from "three";
-import {
-  EYE,
-  LIGHT_FLOATS,
-  POINT_FLOATS,
-  buildLayout,
-  buildLights,
-  viewFor,
-  type View,
-} from "./scene";
+import { POINT_FLOATS, buildLayout, loadPhoto, viewFor, type View } from "./photo";
 // The bead shading, the bloom and the grade are the ocean's; flow.wgsl borrows its noise.
 import grainShader from "../vgpu/grains.wgsl";
 import bloomShader from "../vgpu/bloom.wgsl";
 import presentShader from "../vgpu/present.wgsl";
-import bakeShader from "./bake.wgsl";
 import flowShader from "./flow.wgsl";
 
 export type ForestVgpu = Awaited<ReturnType<typeof createForestVgpu>>;
@@ -32,7 +23,6 @@ const DEG = Math.PI / 180;
 const COVERAGE = 1.6;
 // Mean squared size over a life (envelope in flow.wgsl) times the spread of grain sizes.
 const GROWTH_SQUARED = 0.58;
-const AMBIENT: [number, number, number] = [0.05, 0.06, 0.1];
 // The far haze in flow.wgsl, as the clear colour, so the gaps between grains are distance too.
 const FOG: [number, number, number, number] = [0.03, 0.045, 0.08, 1];
 
@@ -61,24 +51,16 @@ export async function createForestVgpu(
     const haloY = target(gpu, { size: [1, 1], format: "rgba16float" });
     const linearSampler = sampler(gpu, { minFilter: "linear", magFilter: "linear" });
 
-    const lights = buildLights();
-    const lightCount = lights.length / LIGHT_FLOATS;
     const pointBuffer = storage(gpu, count * POINT_FLOATS * 4);
-    const lightBuffer = storage(gpu, lights.byteLength, "read");
     const stateBuffer = storage(gpu, count * 16);
     const litBuffer = storage(gpu, count * 32);
-    lightBuffer.write(lights);
-    // Stagger lives so the wood breathes unevenly from the first frame.
+    // Stagger lives so the alley breathes unevenly from the first frame.
     const initialState = new Float32Array(count * 4);
     for (let i = 0; i < count; i++) initialState[i * 4 + 3] = (i * 0.618034) % 1;
     stateBuffer.write(initialState);
 
     const camera = new PerspectiveCamera(45, 16 / 9, 0.05, 200);
     camera.coordinateSystem = WebGPUCoordinateSystem;
-    const bake = compute(gpu, bakeShader, {
-      label: "bake",
-      set: { points: pointBuffer, lights: lightBuffer },
-    });
     const flow = compute(gpu, flowShader, {
       label: "flow",
       set: { points: pointBuffer, state: stateBuffer, lit: litBuffer },
@@ -110,8 +92,8 @@ export async function createForestVgpu(
     const present = effect(gpu, presentShader, {
       set: { scene, bloom: bloomY, halo: haloY, linearSampler },
     });
-    await Promise.all([
-      bake.compile(),
+    const [photo] = await Promise.all([
+      loadPhoto(),
       flow.compile(),
       grains.compile(scene),
       horizontal.compile(bloomX),
@@ -121,24 +103,14 @@ export async function createForestVgpu(
       present.compile({ colors: [output.format] }),
     ]);
 
+    // The alley is fixed in space, so it is laid out once; only the framing follows the canvas.
+    const { points, density } = buildLayout(count, photo);
+    pointBuffer.write(points);
     let view: View | undefined;
-    let density = 1;
     let pixelSize = 4;
     let time = 0;
     const look = { x: 0, y: 0 };
     const forward = new Vector3();
-
-    /** Lays the wood out for this frame shape and lights it. */
-    const layOut = (next: View) => {
-      view = next;
-      const layout = buildLayout(count, view);
-      density = layout.density;
-      pointBuffer.write(layout.points);
-      // New homes: every grain starts its life over, with no offset carried from the old one.
-      stateBuffer.write(initialState);
-      bake.set({ bake: { eye: EYE, count, ambient: AMBIENT, lightCount } });
-      bake.dispatch(Math.ceil(count / 64));
-    };
 
     return {
       resize(width: number, height: number, dpr: number) {
@@ -162,9 +134,8 @@ export async function createForestVgpu(
         haloHorizontal.set({ blur: { direction: [16 / size[0], 0] } });
         haloVertical.set({ blur: { direction: [0, 16 / size[1]] } });
         const aspect = width / height;
-        // Re-lay the wood only when the frame's shape really changes.
-        if (!view || Math.abs(Math.log(aspect / view.aspect)) > 0.08) layOut(viewFor(aspect));
-        const fov = view?.fov ?? 45 * DEG;
+        view = viewFor(aspect, photo);
+        const fov = view.fov;
         camera.aspect = aspect;
         camera.fov = fov / DEG;
         camera.updateProjectionMatrix();
@@ -176,16 +147,17 @@ export async function createForestVgpu(
       render({ delta, pointer }: Frame) {
         if (!view) return;
         time += delta;
-        // The source demo's rig, scaled down for a path in a wood: a slow dolly on the same
-        // 12.6 s cycle, a slight roll, and damped parallax that follows the pointer.
+        // The source demo's rig, scaled down for an alley seen from one place: a slow dolly on
+        // the same 12.6 s cycle, a slight roll, and damped parallax that follows the pointer. The
+        // dolly only goes in, since behind the photograph's camera there is nothing to see.
         const damping = 1 - Math.exp(-2 * delta);
-        look.x += (pointer[0] * 0.55 - look.x) * damping;
-        look.y += (-pointer[1] * 0.2 - look.y) * damping;
-        const dolly = 0.6 * Math.sin(time * 0.5);
+        look.x += (pointer[0] * 0.3 - look.x) * damping;
+        look.y += (-pointer[1] * 0.12 - look.y) * damping;
+        const dolly = 0.3 - 0.3 * Math.cos(time * 0.5);
         camera.position.set(
-          EYE[0] + look.x + 0.12 * Math.sin(time * 0.21),
-          EYE[1] + look.y + 0.04 * Math.sin(time * 0.37),
-          EYE[2] - dolly,
+          look.x + 0.08 * Math.sin(time * 0.21),
+          look.y + 0.03 * Math.sin(time * 0.37),
+          -dolly,
         );
         camera.up.set(0, 1, 0);
         camera.lookAt(view.target[0], view.target[1], view.target[2]);

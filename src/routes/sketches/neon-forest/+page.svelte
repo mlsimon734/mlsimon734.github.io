@@ -6,13 +6,13 @@
 <Seo
   title="Neon Wood"
   path="/sketches/neon-forest"
-  description="A path through a wood at night, wired with strings of light, drawn as a million drifting points."
+  description="An overgrown alley at night, strung with lights, drawn as a million drifting points."
 />
 
 <div class="layout-md text-lg">
   <h1 class="heading2">neon wood</h1>
   <p class="lede">
-    A path through a wood at night, strung with lights, with a door left open at the end.
+    An alley gone back to forest at night, strung with lights, with a door left open at the end.
   </p>
 </div>
 
@@ -24,18 +24,24 @@
   <details>
     <summary>How it works</summary>
     <p>
-      Nothing here is a photograph or a model file. The trunks, the canopy, the paving and the
-      doorway are laid out from a seed when the page loads, then sampled as points: every visible
-      surface gets grains in proportion to the patch of view it fills, with a bias toward the
-      distance, so the near trees are drawn by fewer, larger grains and the far ones by fine dust.
-      Each grain is lit once, from where it was born, by the bulbs on the three strands and by the
-      open door; the wet paving adds a streak toward your eye for every light.
+      The idea was a cyberpunk street that the forest has taken back. The alley started as one
+      image, generated with Gemini from a description of the scene.
+      <a
+        href="https://github.com/microsoft/MoGe"
+        class="link"
+        target="_blank"
+        rel="noopener noreferrer">MoGe-2</a
+      >, a model that estimates the shape of a scene from a single picture, gave every pixel a
+      distance in metres, which turns the picture into points in space. Each pixel gets grains in
+      proportion to the patch of view it fills, with a bias toward the distance, so the near plants
+      are drawn by fewer, larger grains and the far end by fine dust. The brightest pixels count as
+      lights: they are drawn brighter than white, so they bloom, and with finer grains.
     </p>
     <p>
       Every grain lives about a second. It is born in place, swells, and, where a slowly wandering
-      region of the wood comes loose, is carried through the curl of a noise field before it fades
+      region of the alley comes loose, is carried through the curl of a noise field before it fades
       and forms again at home. The lights and the doorway hold still. Grains keep the color they
-      were born with, so a swirl reads as the wood itself coming apart, and because they move in
+      were born with, so a swirl reads as the alley itself coming apart, and because they move in
       metres, near swirls cross more of the frame than far ones. The motion and camera are borrowed
       from
       <a
