@@ -1,4 +1,4 @@
-import type { GridConfig, WorldParams, WeatherParams } from "./types";
+import type { GridConfig, WeatherParams } from "./types";
 import { HORIZON, horizonRow } from "./frame";
 
 export interface AtmosphereSample {
@@ -61,8 +61,43 @@ function fbm(x: number, y: number, seed: number): number {
 }
 
 /**
+ * How far the cloud field has drifted through its noise: (x, y) at scene time zero,
+ * moving at (vx, vy) per second of scene time.
+ */
+export interface CloudDrift {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+}
+
+function windVelocity(weather: WeatherParams): { vx: number; vy: number } {
+  const direction = ((weather.windDirection - 90) * Math.PI) / 180;
+  const speed = 0.006 + weather.windSpeed * 0.0012;
+  return { vx: Math.cos(direction) * speed, vy: Math.sin(direction) * speed * 0.22 };
+}
+
+/**
+ * A drift along this wind that had already blown for `elapsed` seconds of scene time
+ * at time zero. Seeding that from the wall clock gives every moment its own sky.
+ */
+export function startDrift(weather: WeatherParams, elapsed = 0): CloudDrift {
+  const { vx, vy } = windVelocity(weather);
+  return { x: vx * elapsed, y: vy * elapsed, vx, vy };
+}
+
+/**
+ * Re-aim the drift along a new wind at scene time `time`, keeping the clouds where
+ * they stand so they turn instead of jumping. An unchanged wind changes nothing.
+ */
+export function steerDrift(drift: CloudDrift, weather: WeatherParams, time: number): CloudDrift {
+  const { vx, vy } = windVelocity(weather);
+  return { x: drift.x + (drift.vx - vx) * time, y: drift.y + (drift.vy - vy) * time, vx, vy };
+}
+
+/**
  * Samples a layered, wind-advected marine atmosphere at character-grid coordinates.
- * The field is deterministic for a given day and parameter set, so changes feel like
+ * The field is deterministic for a given drift and parameter set, so changes feel like
  * weather moving through one place rather than television static.
  */
 export function sampleAtmosphere(
@@ -72,22 +107,19 @@ export function sampleAtmosphere(
   width: number,
   height: number,
   weather: WeatherParams,
-  daySeed: number,
+  driftX: number,
+  driftY: number,
 ): AtmosphereSample {
   const horizon = height * HORIZON;
   const skyT = clamp01(y / Math.max(horizon, 1));
   const cover = clamp01(weather.cloudCover);
   const humidity = clamp01(weather.humidity);
-  const direction = ((weather.windDirection - 90) * Math.PI) / 180;
-  const advection = timeSeconds * (0.006 + weather.windSpeed * 0.0012);
-  const driftX = Math.cos(direction) * advection;
-  const driftY = Math.sin(direction) * advection * 0.22;
 
   // High, stretched cirrus and a lower marine deck move at slightly different rates.
   const highMask = smoothstep(0.04, 0.18, skyT) * (1 - smoothstep(0.5, 0.72, skyT));
   const lowMask = smoothstep(0.28, 0.48, skyT) * (1 - smoothstep(0.9, 1.02, skyT));
-  const high = fbm((x / width) * 3.1 + driftX * 1.6, skyT * 6.5 + driftY, daySeed + 17);
-  const low = fbm((x / width) * 4.6 + driftX, skyT * 9.5 + driftY, daySeed + 53);
+  const high = fbm((x / width) * 3.1 + driftX * 1.6, skyT * 6.5 + driftY, 17);
+  const low = fbm((x / width) * 4.6 + driftX, skyT * 9.5 + driftY, 53);
   const billow = Math.max(high * highMask, (0.72 * low + 0.28 * high) * lowMask);
   const threshold = 0.82 - cover * 0.5 - humidity * 0.08;
   const cloud = smoothstep(threshold, threshold + 0.17, billow);
@@ -99,11 +131,7 @@ export function sampleAtmosphere(
 
   // Rain hangs below the lower deck in slanted, coherent curtains.
   const rainBand = smoothstep(0.48, 0.62, skyT);
-  const curtain = fbm(
-    (x / width) * 7.5 + driftX * 1.35,
-    skyT * 2.2 - timeSeconds * 0.018,
-    daySeed + 97,
-  );
+  const curtain = fbm((x / width) * 7.5 + driftX * 1.35, skyT * 2.2 - timeSeconds * 0.018, 97);
   const streak = 0.5 + 0.5 * Math.sin(x * 2.7 + y * 0.72 - timeSeconds * 4.8);
   const rain =
     clamp01(weather.precipitation) *
@@ -128,9 +156,12 @@ export function weatherPulse(x: number, y: number, timeSeconds: number): number 
 /** One cell-resolution atmosphere field, shared by glyphs and painted background. */
 export function sampleAtmosphereGrid(
   config: GridConfig,
-  world: Pick<WorldParams, "waterTime" | "dayOfYear">,
+  time: number,
   weather: WeatherParams,
+  drift: CloudDrift = startDrift(weather),
 ): AtmosphereSample[] {
+  const driftX = drift.x + drift.vx * time;
+  const driftY = drift.y + drift.vy * time;
   const samples: AtmosphereSample[] = [];
   for (let y = 0; y < horizonRow(config); y++) {
     for (let x = 0; x < config.width; x++) {
@@ -138,11 +169,12 @@ export function sampleAtmosphereGrid(
         sampleAtmosphere(
           x + 0.5,
           y + 0.5,
-          world.waterTime,
+          time,
           config.width,
           config.height,
           weather,
-          world.dayOfYear,
+          driftX,
+          driftY,
         ),
       );
     }

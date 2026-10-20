@@ -16,7 +16,13 @@ import {
   type MonoMetrics,
   type ZonePalette,
 } from "#lib/horizon/render.js";
-import { sampleAtmosphereGrid, type AtmosphereSample } from "#lib/horizon/atmosphere.js";
+import {
+  sampleAtmosphereGrid,
+  startDrift,
+  steerDrift,
+  type AtmosphereSample,
+  type CloudDrift,
+} from "#lib/horizon/atmosphere.js";
 import { forEachBrailleDot } from "#lib/horizon/braille.js";
 import { horizonRow } from "#lib/horizon/frame.js";
 import { computeWorldParams } from "#lib/horizon/world.js";
@@ -54,6 +60,7 @@ interface WorkerState {
   waveParams: WaveParams | null;
   skyParams: SkyParams | null;
   weatherParams: WeatherParams | null;
+  drift: CloudDrift | null;
   waterTime: number;
   animationStart: number;
   timerId: number | null;
@@ -73,6 +80,7 @@ const state: WorkerState = {
   waveParams: null,
   skyParams: null,
   weatherParams: null,
+  drift: null,
   waterTime: 0,
   animationStart: 0,
   timerId: null,
@@ -208,7 +216,8 @@ function render() {
     !state.palette ||
     !state.waveParams ||
     !state.skyParams ||
-    !state.weatherParams
+    !state.weatherParams ||
+    !state.drift
   ) {
     return;
   }
@@ -222,8 +231,9 @@ function render() {
     atmosphereTime = nextAtmosphereTime;
     atmosphereGrid = sampleAtmosphereGrid(
       state.config,
-      { ...world, waterTime: atmosphereTime },
+      atmosphereTime,
       state.weatherParams,
+      state.drift,
     );
   }
   const grid = generateHorizon(
@@ -298,6 +308,11 @@ function syncState(message: SyncMessage) {
   state.weatherParams = message.weatherParams;
   state.reducedMotion = message.reducedMotion;
   state.waterTime = state.reducedMotion ? 0 : currentWaterTime;
+  // The clouds open where this wind would have carried them by now, so each visit
+  // continues one sky instead of restarting it; a new wind turns them where they stand.
+  state.drift = state.drift
+    ? steerDrift(state.drift, message.weatherParams, state.waterTime)
+    : startDrift(message.weatherParams, (Date.now() / 1000) * message.waveParams.speed);
 
   if (message.active && !state.reducedMotion) {
     const speed = Math.max(message.waveParams.speed, 0.001);
