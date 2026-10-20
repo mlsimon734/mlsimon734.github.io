@@ -62,11 +62,12 @@ frames after warm-up. CPU and GPU time together; not a phone or energy benchmark
 | 390 × 844, DPR 3    | 183,769 | 1.8          |
 
 The component caps at 60 fps, renders a still under reduced motion (refreshed each minute), and
-stops submitting while paused, offscreen or hidden. All shaders validate natively:
+stops submitting while paused, offscreen or hidden. Vite prepares the shaders with `wgslVitePlugin`
+from `vgpu/client`. The sky and field passes import shared helpers from `common.wgsl`; the browser
+receives prepared shader objects rather than raw WGSL strings. All shaders validate natively:
 
 ```sh
-for shader in sky field; do cat src/lib/particles/vgpu/{common,$shader}.wgsl > "/tmp/$shader.wgsl"; done
-for shader in /tmp/{sky,field}.wgsl src/lib/particles/vgpu/{grains,bloom,present}.wgsl; do
+for shader in src/lib/particles/vgpu/{sky,field,grains,bloom,present}.wgsl; do
   bunx --no-install vgpu check "$shader" --require-validation
 done
 ```
