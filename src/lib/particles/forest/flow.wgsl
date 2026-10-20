@@ -26,9 +26,9 @@ struct Flow {
 // photo.ts thickens them (d^0.9 per steradian), so coverage falls gently with distance.
 const REFERENCE_DEPTH = 8.0;
 const SIZE_POWER = 0.6;
-// Night air, faintly lit by the city. The photograph has its own haze, so this only settles the
-// far end a little further back. The renderer clears to the same colour.
-const FOG = vec3f(0.03, 0.045, 0.08);
+// Night air, a little bluer than the photograph's shadows. The photograph has its own haze, so
+// this only settles the far end a little further back. The renderer clears to the same colour.
+const FOG = vec3f(0.006, 0.008, 0.014);
 const FOG_DISTANCE = 60.0;
 // Swirls a few metres across, slow to change shape.
 const FREQUENCY = 0.32;

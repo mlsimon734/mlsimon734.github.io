@@ -17,8 +17,9 @@ const REFERENCE_DEPTH = 8;
 const DENSITY_POWER = 0.9;
 /** Lights are drawn with finer grains (flow.wgsl), so they take more of them. */
 const FINE = 4;
-/** The frame stays this far inside the photograph, so the rig's drift never shows its edge. */
-const MARGIN = 0.92;
+/** The frame stays this far inside the photograph, so the rig's drift never shows its edge, even
+ * with the pointer in a corner at the start of the dolly. */
+const MARGIN = 0.86;
 
 export interface Photo {
   width: number;
@@ -93,9 +94,9 @@ export async function loadPhoto(): Promise<Photo> {
 }
 
 /** Frames the photograph's view: whole height on narrow screens, whole width on wide ones. */
-export function viewFor(aspect: number, photo: Photo): View {
-  const across = (MARGIN * 0.5) / photo.fx;
-  const tall = (MARGIN * 0.5) / photo.fy;
+export function viewFor(aspect: number, lens: Pick<Photo, "fx" | "fy">): View {
+  const across = (MARGIN * 0.5) / lens.fx;
+  const tall = (MARGIN * 0.5) / lens.fy;
   const fov = 2 * Math.atan(Math.min(tall, across / aspect));
   return { aspect, fov, target: [0, 0, -10] };
 }

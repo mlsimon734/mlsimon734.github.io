@@ -23,8 +23,9 @@ const DEG = Math.PI / 180;
 const COVERAGE = 1.6;
 // Mean squared size over a life (envelope in flow.wgsl) times the spread of grain sizes.
 const GROWTH_SQUARED = 0.58;
-// The far haze in flow.wgsl, as the clear colour, so the gaps between grains are distance too.
-const FOG: [number, number, number, number] = [0.03, 0.045, 0.08, 1];
+// The far haze in flow.wgsl, as the clear colour, so the gaps between grains are distance too. It
+// sits at the photograph's own shadows, so gaps read as darkness rather than as a veil.
+const FOG: [number, number, number, number] = [0.006, 0.008, 0.014, 1];
 
 /** Owns one device and its resources. The Svelte component owns visibility and time. */
 export async function createForestVgpu(
@@ -105,6 +106,8 @@ export async function createForestVgpu(
 
     // The alley is fixed in space, so it is laid out once; only the framing follows the canvas.
     const { points, density } = buildLayout(count, photo);
+    // Only the focal lengths outlive the layout, so the decoded image can be freed.
+    const lens = { fx: photo.fx, fy: photo.fy };
     pointBuffer.write(points);
     let view: View | undefined;
     let pixelSize = 4;
@@ -134,7 +137,7 @@ export async function createForestVgpu(
         haloHorizontal.set({ blur: { direction: [16 / size[0], 0] } });
         haloVertical.set({ blur: { direction: [0, 16 / size[1]] } });
         const aspect = width / height;
-        view = viewFor(aspect, photo);
+        view = viewFor(aspect, lens);
         const fov = view.fov;
         camera.aspect = aspect;
         camera.fov = fov / DEG;
