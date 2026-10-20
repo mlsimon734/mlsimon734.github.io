@@ -39,8 +39,11 @@
       matches the expected glare. That is where the path of light comes from.
     </p>
     <p>
-      Every grain lives a few seconds, drifts on a slow noise field, and returns to its place, a
-      motion borrowed from
+      Every grain lives about a second. It is born in place, swells, and is carried through a field
+      of slow vortices before it fades and forms again at home. The vortices are the curl of a noise
+      field, so the picture swirls without tearing, and the horizon is one of their streamlines, so
+      sky and sea never mix. Wind opens more of the field and quickens it. The motion is borrowed
+      from
       <a
         href="https://github.com/cullenwebber/three-ml-sharp"
         class="link"

@@ -3,9 +3,9 @@
 The piece at `/sketches/ocean-sunset` renders Santa Monica Bay at the current minute as a dense
 cloud of grains, in the manner of
 [cullenwebber/three-ml-sharp](https://github.com/cullenwebber/three-ml-sharp): every grain carries
-GPU state, drifts on a noise flow field, and reforms at home, so the scene reads as a single-image
-reconstruction that breathes and frays. The earlier Three.js ocean remains at
-`/sketches/ocean-sunset/webgl` for browsers without WebGPU.
+GPU state, lives about a second, swirls away on a flow field and reforms at home, so the scene reads
+as a single-image reconstruction that keeps pouring away and coming back. The earlier Three.js ocean
+remains at `/sketches/ocean-sunset/webgl` for browsers without WebGPU.
 
 ## Inputs
 
@@ -33,6 +33,19 @@ reconstruction that breathes and frays. The earlier Three.js ocean remains at
 4. `bloom.wgsl`, `present.wgsl`: half- and sixteenth-resolution blur, the demo's power-curve
    contrast and saturation, ACES, sRGB, dither.
 
+## Motion
+
+Each grain is born at home, swells over half its life, holds, and fades over the last quarter, the
+demo's 1.1-second cycle. While it lives it is carried through a field of slow vortices: the curl of
+a stream function that is simplex noise times a broad noise gate (curl noise, after Bridson et al.).
+A curl has no divergence, so grains born evenly stay evenly spread and the picture swirls without
+tearing holes. The stream function also vanishes on the horizon, which makes the horizon a
+streamline: grains slide along it but never cross, so the sun, its path and the far sea stay legible
+while the sky and the near water curl. Wind widens the open regions, quickens them and leans them
+downwind. Velocities come from the noise's analytic gradient, and each step is a midpoint step,
+because a plain Euler step spirals grains out of every vortex and leaves its eye empty. Distances
+are in screen heights, so the swirls keep their size on any canvas.
+
 Grain count scales with canvas area (about 0.7 per device pixel at DPR ≤ 1.25, 150k to 1.1M), and
 grain size is solved for 90% coverage. Darkness comes from where the scene thins (the upper sky, the
 frame's edges), not from gaps between grains.
@@ -44,11 +57,11 @@ frames after warm-up. CPU and GPU time together; not a phone or energy benchmark
 
 | Canvas              | Grains  | ms per frame |
 | ------------------- | ------- | ------------ |
-| 1440 px, DPR 1      | 711,245 | 6.7          |
-| 1280 px, DPR 2→1.25 | 909,720 | 8.4          |
-| 390 × 844, DPR 3    | 183,769 | 2.0          |
+| 1440 px, DPR 1      | 711,245 | 7.3          |
+| 1280 px, DPR 2→1.25 | 909,720 | 10.8         |
+| 390 × 844, DPR 3    | 183,769 | 1.8          |
 
-The component caps at 30 fps, renders a still under reduced motion (refreshed each minute), and
+The component caps at 60 fps, renders a still under reduced motion (refreshed each minute), and
 stops submitting while paused, offscreen or hidden. All shaders validate natively:
 
 ```sh
@@ -62,6 +75,8 @@ Native validation needs GPU access, which the Claude Code sandbox blocks.
 
 ## References
 
+- R. Bridson, J. Houriham and M. Nordenstam, "Curl-noise for procedural fluid flow," _ACM SIGGRAPH
+  2007 Papers_. [doi:10.1145/1275808.1276435](https://doi.org/10.1145/1275808.1276435)
 - C. Cox and W. Munk, "Measurement of the roughness of the sea surface from photographs of the sun's
   glitter," _Journal of the Optical Society of America_ 44(11), 1954.
   [doi:10.1364/JOSA.44.000838](https://doi.org/10.1364/JOSA.44.000838)

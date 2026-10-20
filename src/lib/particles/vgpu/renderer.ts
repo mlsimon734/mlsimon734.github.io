@@ -39,7 +39,7 @@ const DEG = Math.PI / 180;
 // where the scene thins out, not from gaps between grains.
 const COVERAGE = 0.9;
 // Mean squared size over a life (envelope in field.wgsl) times the spread of grain sizes.
-const GROWTH_SQUARED = 0.72;
+const GROWTH_SQUARED = 0.58;
 
 /** Owns one device and its resources. The Svelte component owns visibility and time. */
 export async function createOceanVgpu(
@@ -191,20 +191,21 @@ export async function createOceanVgpu(
           waveBuffer.write(waveSpectrum(weather, environment.heading));
         }
 
-        // Damped pointer parallax and a slow standing sway, much gentler than the demo's rig.
+        // Damped pointer parallax, and the demo's breathing rig scaled to a horizon: a slow roll
+        // on its 12.6 s cycle, with a bob and a nod out of step with it.
         const damping = delta > 0 ? 1 - Math.exp(-1.8 * delta) : 1;
         look.yaw += (-pointer[0] * 2.4 * DEG - look.yaw) * damping;
         look.pitch += (-pointer[1] * 1.1 * DEG - look.pitch) * damping;
         look.x += (pointer[0] * 0.8 - look.x) * damping;
         camera.position.set(
           look.x + 0.35 * Math.sin(time * 0.05),
-          view.eyeHeight + 0.05 * Math.sin(time * 0.17),
+          view.eyeHeight + 0.45 * Math.sin(time * 0.31),
           0,
         );
         camera.rotation.set(
-          view.pitch + look.pitch + 0.08 * DEG * Math.sin(time * 0.13),
+          view.pitch + look.pitch + 0.3 * DEG * Math.sin(time * 0.23 + 1),
           look.yaw,
-          0.22 * DEG * Math.sin(time * 0.21),
+          1.4 * DEG * Math.sin(time * 0.5),
         );
         camera.updateMatrixWorld();
 
@@ -243,13 +244,19 @@ export async function createOceanVgpu(
             latitude: OBSERVER_LATITUDE,
             heading: environment.heading * DEG,
             pixelAngle,
-            flowInfluence: 0.3 - 0.25 * windEnergy,
-            flowStrength: 0.004 + 0.006 * windEnergy,
+            flowInfluence: 0.25 - 0.45 * windEnergy,
+            flowStrength: 0.12 + 0.16 * windEnergy,
+            windLean: 0.5 * windEnergy,
             pixelSize,
             count,
             waveCount: MAX_WAVES,
             rain: weather.precipitation,
             wind,
+            frame: [0.5 * camera.aspect, 0.5],
+            fov: view.fov,
+            // Grains keep their layout's screen coordinates, so the horizon sits where the
+            // unswayed view puts it.
+            horizon: (0.5 * Math.tan(-view.pitch)) / Math.tan(view.fov / 2),
           },
         });
         field.dispatch(Math.ceil(count / 64));

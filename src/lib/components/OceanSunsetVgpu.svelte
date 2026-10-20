@@ -161,7 +161,8 @@
     let frameId = 0;
     let previous = performance.now();
     let pending = 0;
-    const interval = 1000 / 30;
+    // Up to 60 fps: the grains stream several pixels a frame, which steps visibly at 30.
+    const interval = 1000 / 60;
     const tick = (now: number) => {
       pending += Math.max(0, now - previous);
       previous = now;

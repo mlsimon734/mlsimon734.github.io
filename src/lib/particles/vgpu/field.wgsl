@@ -28,6 +28,13 @@ struct Field {
   rain: f32,
   /** Unit vector the surface wind blows toward, in the view's xz plane. */
   wind: vec2f,
+  /** Half the frame's width and height, in screen heights. */
+  frame: vec2f,
+  /** Vertical field of view in radians. */
+  fov: f32,
+  windLean: f32,
+  /** Height of the horizon above the frame's center, in screen heights. */
+  horizon: f32,
 }
 @group(0) @binding(0) var<storage, read> grains: array<Grain>;
 @group(0) @binding(1) var<storage, read_write> state: array<vec4f>;
@@ -142,19 +149,20 @@ fn skyPresence(dir: vec3f, cloud: f32) -> f32 {
   return max(band, max(smoothstep(0.04, 0.35, cloud), glow));
 }
 
-// Grains leave in drifting wisps rather than as scattered holes.
+// Grains leave in drifting wisps rather than as scattered holes. Where the scene is nearly whole,
+// all of it stays: the flow would draw the odd gap out into a slash.
 fn kept(uv: vec2f, seed: f32, presence: f32) -> f32 {
   let wisps = 0.5 + 0.5 * simplex(vec3f(uv * vec2f(2.6, 5.5), field.time * 0.015));
-  return step(mix(wisps, hash(seed, 9u), 0.55), presence);
+  return step(mix(wisps, hash(seed, 9u), 0.55), smoothstep(0.0, 0.85, presence));
 }
 
 fn shadeSky(grain: Grain) -> Shaded {
   let dir = grain.reference.xyz;
   let seen = skyAt(dir, 5);
   let presence = skyPresence(dir, seen.cloud) * framePresence(grain.attributes.zw);
-  // Drift gathers at cloud edges and where the sky thins out, and calms toward the horizon.
+  // Drift gathers at cloud edges and where the sky thins out.
   let edge = 4.0 * seen.cloud * (1.0 - seen.cloud);
-  let activity = (0.25 + 1.3 * edge + 1.2 * (1.0 - presence)) * smoothstep(0.0, 0.12, dir.y);
+  let activity = 0.85 + 0.6 * edge + 0.6 * (1.0 - presence);
   let shown = kept(grain.attributes.zw, grain.attributes.x, presence);
   // The sky is a smooth field: broader, overlapping grains keep it whole where the sea needs detail.
   return Shaded(field.camera + dir * SKY_RADIUS, seen.color, activity, 1.3 * shown);
@@ -173,8 +181,8 @@ fn shadeSun(grain: Grain) -> Shaded {
   let limb = 1.0 - 0.55 * (1.0 - sqrt(1.0 - min(r2, 1.0)));
   let clear = 1.0 - smoothstep(0.15, 0.85, seen.cloud);
   let disc = table(LUT_SUN_GROUND) * SUN_RADIANCE * limb * clear;
-  // Sparks leave the rim; the core holds.
-  let activity = 0.15 + 0.9 * smoothstep(0.55, 1.0, r2);
+  // Sparks leave the rim; the core mostly holds.
+  let activity = 0.2 + 0.8 * smoothstep(0.55, 1.0, r2);
   return Shaded(field.camera + dir * BODY_RADIUS, seen.color + disc, activity, step(0.0, dir.y));
 }
 
@@ -189,7 +197,7 @@ fn shadeMoon(grain: Grain) -> Shaded {
   let seen = skyAt(dir, 4);
   let clear = 1.0 - smoothstep(0.15, 0.85, seen.cloud);
   let disc = table(LUT_MOON_GROUND) * MOON_RADIANCE * maria * (light + 0.012) * clear;
-  return Shaded(field.camera + dir * BODY_RADIUS, seen.color + disc, 0.1, step(0.0, dir.y));
+  return Shaded(field.camera + dir * BODY_RADIUS, seen.color + disc, 0.3, step(0.0, dir.y));
 }
 
 fn shadeStar(grain: Grain) -> Shaded {
@@ -299,10 +307,37 @@ fn shadeOcean(grain: Grain) -> Shaded {
   color = color * transmittance + horizon * (1.0 - transmittance);
   let near = smoothstep(120.0, 18.0, range);
   let presence = framePresence(grain.attributes.zw);
-  let activity = (0.12 + 1.4 * smoothstep(0.35, 0.95, lift) + 1.5 * (1.0 - presence)) *
-    smoothstep(2600.0, 500.0, range);
+  let activity = (0.75 + 0.5 * smoothstep(0.35, 0.95, lift) + 0.8 * (1.0 - presence)) *
+    mix(0.5, 1.0, smoothstep(2600.0, 300.0, range));
   let shown = kept(grain.attributes.zw, seed, presence);
   return Shaded(position, color, activity, (1.0 + near * 0.6) * shown);
+}
+
+// Smoothstep and its derivative with respect to x.
+fn easing(e0: f32, e1: f32, x: f32) -> vec2f {
+  let t = clamp((x - e0) / (e1 - e0), 0.0, 1.0);
+  return vec2f(t * t * (3.0 - 2.0 * t), 6.0 * t * (1.0 - t) / (e1 - e0));
+}
+
+// Flow velocity at a point in screen heights, before scaling: the curl of a stream function that
+// is noise times a gate. The gate opens where a slower noise is high and closes on the horizon,
+// which makes the horizon a streamline: grains slide along it but never cross, so sky and sea
+// stay separate. Wherever the gate is open the flow also leans downwind.
+fn velocity(p: vec2f, slow: f32) -> vec2f {
+  // A broad, gently ramped gate: a steep one would turn each open region's rim into a jet that
+  // traces its outline.
+  let opening = simplexGrad(vec3f(p * 1.6, slow));
+  let swirl = simplexGrad(vec3f(p * 3.5, slow * 1.3 + 11.0));
+  let open = easing(field.flowInfluence - 0.3, field.flowInfluence + 0.6, opening.w);
+  let distance = p.y - field.horizon;
+  // Wide enough to keep the sun, its path and the far sea's fine bands legible.
+  let wall = easing(0.0, 0.22, abs(distance));
+  let gate = open.x * wall.x;
+  let gateSlope = open.y * opening.xy * 1.6 * wall.x + vec2f(0.0, open.x * wall.y * sign(distance));
+  let slope = gateSlope * swirl.w + gate * swirl.xy * 3.5;
+  var flow = vec2f(slope.y, -slope.x) * 0.25;
+  flow *= min(1.0, 2.0 / max(length(flow), 1e-4));
+  return flow + vec2f(field.wind.x, 0.15) * field.windLean * gate;
 }
 
 @compute @workgroup_size(64)
@@ -324,37 +359,39 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
     shaded = shadeStar(grain);
   }
 
-  // The source demo's motion: each grain lives a few seconds, drifts along a normalized noise
-  // flow wherever a slower noise gate opens, then reforms at home. Drift is measured in
-  // radians of view so near and far grains travel alike on screen.
+  // The source demo's motion: each grain lives about a second. It is born at home, swells, and
+  // streams through a field of slow vortices wherever a noise gate is open, so the picture keeps
+  // curling away and re-forming. The flow is the curl of the gated potential, which has no
+  // divergence: grains born evenly stay evenly spread, so the image swirls without tearing.
+  // Distances are in screen heights, so the swirls keep their size on any canvas.
   let seed = grain.attributes.x;
   var current = state[index];
-  var life = current.w + field.delta / mix(3.2, 7.5, hash(seed, 1u));
-  var offset = current.xyz;
+  var life = current.w + field.delta * 0.9 * mix(0.85, 1.15, hash(seed, 1u));
+  var offset = current.xy;
   if (life >= 1.0) {
     life = fract(life);
-    offset = vec3f(0.0);
+    offset = vec2f(0.0);
   }
-  let uv = grain.attributes.zw;
-  let slow = field.time * 0.05;
-  let gate = simplex(vec3f(uv * vec2f(1.4, 2.4), slow + kind * 7.3));
-  let open = smoothstep(field.flowInfluence, 1.0, gate) * shaded.activity;
-  let here = vec3f(uv * vec2f(2.2, 3.4) + offset.xy * 30.0, field.time * 0.11);
-  var flow = vec3f(simplex(here), simplex(here + vec3f(19.1, 7.7, 0.0)), simplex(here + vec3f(3.3, 31.7, 0.0)));
-  // Lean downwind and slightly upward, like spray and vapour leaving the surface.
-  flow = normalize(flow + vec3f(field.wind.x * 0.6, 0.35, -field.wind.y * 0.6));
-  offset += flow * field.delta * open * field.flowStrength;
-  state[index] = vec4f(offset, life);
+  // One field for the whole scene, so whatever leaves a patch of sky or sea is replaced by
+  // whatever flows in behind it.
+  let slow = field.time * 0.2;
+  let home = grain.attributes.zw * field.frame;
+  let pace = field.delta * shaded.activity * field.flowStrength;
+  // A midpoint step: a plain Euler step lands outside every circle it follows, so grains would
+  // spiral out of each vortex and leave its eye empty.
+  let midpoint = offset + velocity(home + offset, slow) * pace * 0.5;
+  offset += velocity(home + midpoint, slow) * pace;
+  state[index] = vec4f(offset, 0.0, life);
 
   let toward = shaded.position - field.camera;
   let reach = length(toward);
   let ahead = toward / reach;
   let right = normalize(cross(ahead, vec3f(0.0, 1.0, 0.0)));
   let up = cross(right, ahead);
-  let moved = shaded.position + (right * offset.x + up * offset.y + ahead * offset.z) * reach;
-  // Grains swell in and fade out over each life, as in the original, but hold full size for
-  // most of it so surfaces stay whole between the breaths.
-  let grow = min(smoothstep(0.0, 0.18, life), 1.0 - smoothstep(0.7, 1.0, life));
+  let moved = shaded.position + (right * offset.x + up * offset.y) * reach * field.fov;
+  // Grains swell over half their life and fade over the last quarter, close to the original's
+  // envelope but with a short hold, so the surfaces stay fine-grained.
+  let grow = min(smoothstep(0.0, 0.45, life), 1.0 - smoothstep(0.75, 1.0, life));
   let size = field.pixelSize * grain.attributes.y * grow * shaded.scale;
   lit[index] = Lit(vec4f(moved, size), vec4f(shaded.color * field.exposure * adaptation(), 1.0));
 }
