@@ -1,6 +1,5 @@
 <script lang="ts">
   import { slide } from "svelte/transition";
-  import AsciiDivider from "#lib/components/AsciiDivider.svelte";
   import Seo from "#lib/components/Seo.svelte";
   import { inview } from "#lib/actions/inview.js";
 
@@ -212,9 +211,7 @@
   <h1 class="sr-only">Experience</h1>
 
   <section class="reveal" use:inview>
-    <h2 class="heading2">
-      <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>education
-    </h2>
+    <h2 class="heading2">Education</h2>
     {#each education as e}
       <div class="cv-row">
         <span class="cv-period">{e.period}</span>
@@ -235,12 +232,8 @@
     {/each}
   </section>
 
-  <AsciiDivider />
-
   <section class="reveal mt-16" use:inview>
-    <h2 class="heading2">
-      <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>experience
-    </h2>
+    <h2 class="heading2">Experience</h2>
     {#each experience as e, i}
       <div class="cv-row">
         <span class="cv-period">{e.period}</span>
@@ -270,12 +263,8 @@
     {/each}
   </section>
 
-  <AsciiDivider />
-
   <section class="reveal mt-16" use:inview>
-    <h2 class="heading2">
-      <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>publications
-    </h2>
+    <h2 class="heading2">Publications</h2>
     {#each publications as p}
       <div class="cv-row">
         <span class="cv-period">{p.year}</span>
@@ -286,7 +275,7 @@
             {:else}
               {p.title}
             {/if}
-            {#if p.status}<span class="pub-status">[{p.status}]</span>{/if}
+            {#if p.status}<span class="pub-status">{p.status}</span>{/if}
           </div>
           <div class="pub-meta">
             <span>{p.authors}</span>
@@ -297,13 +286,8 @@
     {/each}
   </section>
 
-  <AsciiDivider />
-
   <section class="reveal mt-16" use:inview>
-    <h2 class="heading2">
-      <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>awards &
-      honors
-    </h2>
+    <h2 class="heading2">Awards &amp; honors</h2>
     {#each awards as a}
       <div class="cv-row">
         <span class="cv-period">{a.period}</span>
@@ -312,13 +296,8 @@
     {/each}
   </section>
 
-  <AsciiDivider />
-
   <section class="reveal mt-16" use:inview>
-    <h2 class="heading2">
-      <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>service &
-      teaching
-    </h2>
+    <h2 class="heading2">Service &amp; teaching</h2>
     {#each service as e}
       <div class="cv-row">
         <span class="cv-period">{e.period}</span>
@@ -338,12 +317,10 @@
   </section>
 
   <!--
-  <AsciiDivider />
 
   <section class="reveal mt-16" use:inview>
     <h2 class="heading2">
-      <span class="text-sunset-amber-300 mr-2 font-mono text-base font-normal">//</span>technical
-      coursework
+      Technical coursework
     </h2>
     {#each coursework as c}
       <div class="cv-row">
@@ -366,10 +343,11 @@
   }
 
   .pub-status {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--color-sunset-amber-500);
-    margin-left: 0.35rem;
+    margin-left: 0.25rem;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--color-theme-subtle);
   }
 
   .pub-meta {
@@ -396,20 +374,25 @@
     cursor: pointer;
   }
 
+  .exp-toggle .cv-role {
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 3px;
+    transition: text-decoration-color 0.2s;
+  }
+
   .exp-toggle:hover .cv-role,
   .exp-toggle:focus-visible .cv-role {
-    color: var(--color-sunset-amber-500);
+    text-decoration-color: var(--color-theme-accent);
   }
 
   .exp-toggle-icon {
-    font-family: var(--font-mono);
-    font-size: 0.875rem;
     color: var(--color-theme-subtle);
     margin-left: 0.75rem;
-    transition: color 120ms;
+    transition: color 0.2s;
   }
 
   .exp-toggle:hover .exp-toggle-icon {
-    color: var(--color-sunset-amber-500);
+    color: var(--color-theme-heading);
   }
 </style>

@@ -45,8 +45,8 @@
     </div>
   {/if}
 
-  <p class="footer-note mt-8 text-center font-mono text-sm">
-    // © {__CURRENT_YEAR__} Michael Simon · updated {__LAST_UPDATE__}
+  <p class="footer-note mt-8 text-center text-sm">
+    © {__CURRENT_YEAR__} Michael Simon · updated {__LAST_UPDATE__}
   </p>
 </footer>
 
@@ -70,7 +70,7 @@
 
   .divider {
     flex-grow: 1;
-    border-bottom: 1px dotted var(--color-theme-divider);
+    border-bottom: 1px dotted var(--color-theme-border);
     margin: 0 0.5rem;
     min-width: 2rem;
   }
@@ -81,5 +81,6 @@
 
   .footer-note {
     color: var(--color-theme-subtle);
+    font-variant-numeric: tabular-nums;
   }
 </style>

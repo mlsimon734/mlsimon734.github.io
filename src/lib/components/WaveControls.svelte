@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { slide } from "svelte/transition";
+  import { ChevronDown } from "@lucide/svelte";
   import {
     DEFAULT_WAVE_PARAMS,
     DEFAULT_SKY_PARAMS,
@@ -35,17 +36,17 @@
   let currentLaTime = $state(getLosAngelesHours());
 
   const sceneTime = $derived(wrapHours(currentLaTime + skyParams.timeOffset));
-  const compass = $derived(compassPoint(weatherParams.windDirection));
-  const weatherSourceLabel = $derived(
-    weatherSource === "live"
-      ? "LA live"
-      : weatherSource === "cached"
-        ? "LA cached"
-        : weatherSource === "loading"
-          ? "LA syncing"
-          : weatherSource === "fallback"
-            ? "LA fallback"
-            : "manual",
+  // The caption reads the scene back in words, the way an almanac plate is captioned.
+  const caption = $derived(
+    `Los Angeles at ${formatTimeOfDay(sceneTime)}: ` +
+      `${describeSky(weatherParams.cloudCover, weatherParams.precipitation)}, ` +
+      `${describeWind(weatherParams.windSpeed, weatherParams.windDirection)}` +
+      (weatherSource === "manual"
+        ? " (adjusted)"
+        : weatherSource === "fallback"
+          ? " (forecast unavailable)"
+          : "") +
+      ".",
   );
 
   $effect(() => {
@@ -74,26 +75,50 @@
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
   }
 
-  function compassPoint(degrees: number): string {
-    const points = [
-      "N",
-      "NNE",
-      "NE",
-      "ENE",
-      "E",
-      "ESE",
-      "SE",
-      "SSE",
-      "S",
-      "SSW",
-      "SW",
-      "WSW",
-      "W",
-      "WNW",
-      "NW",
-      "NNW",
-    ];
-    return points[Math.round((((degrees % 360) + 360) % 360) / 22.5) % points.length];
+  function formatTimeOfDay(hours: number): string {
+    const totalMinutes = Math.round(wrapHours(hours) * 60) % (24 * 60);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
+  }
+
+  function describeSky(cloudCover: number, precipitation: number): string {
+    if (precipitation > 0.15) return "rain";
+    if (cloudCover < 0.15) return "clear";
+    if (cloudCover < 0.5) return "partly cloudy";
+    if (cloudCover < 0.85) return "mostly cloudy";
+    return "overcast";
+  }
+
+  // Beaufort names by upper bound in m/s.
+  const BEAUFORT: [number, string][] = [
+    [0.5, "calm"],
+    [1.6, "light air"],
+    [3.4, "light breeze"],
+    [5.5, "gentle breeze"],
+    [8, "moderate breeze"],
+    [10.8, "fresh breeze"],
+    [13.9, "strong breeze"],
+    [17.2, "near gale"],
+    [Infinity, "gale"],
+  ];
+  const DIRECTIONS = [
+    "north",
+    "northeast",
+    "east",
+    "southeast",
+    "south",
+    "southwest",
+    "west",
+    "northwest",
+  ];
+
+  /** `towardDegrees` is where the wind travels; speech names where it comes from. */
+  function describeWind(speed: number, towardDegrees: number): string {
+    const force = BEAUFORT.find(([max]) => speed < max)?.[1] ?? "gale";
+    if (force === "calm") return force;
+    const from = (((towardDegrees + 180) % 360) + 360) % 360;
+    return `${force} from the ${DIRECTIONS[Math.round(from / 45) % DIRECTIONS.length]}`;
   }
 
   function setSceneTime(event: Event) {
@@ -156,12 +181,12 @@
   }
 </script>
 
-<div class="wave-controls font-mono">
+<div class="wave-controls">
   <div class="readout">
     <button class="toggle" onclick={() => (open = !open)} aria-expanded={open}>
-      <span class="comment-prefix">//</span> model · {weatherSourceLabel} · {compass}
-      {weatherParams.windSpeed.toFixed(1)}
-      m/s · {Math.round(weatherParams.cloudCover * 100)}% cloud {open ? "▴" : "▾"}
+      <span class="caption">{caption}</span>
+      <span class="sr-only">Ocean controls</span>
+      <ChevronDown size={14} aria-hidden="true" class="chevron" />
     </button>
     {#if children}<div class="trailing">{@render children()}</div>{/if}
   </div>
@@ -169,7 +194,7 @@
   {#if open}
     <div class="panel" transition:slide={{ duration: reducedMotion ? 0 : 200 }}>
       <div class="preset-row" role="group" aria-labelledby="weather-presets-label">
-        <span id="weather-presets-label"><span class="comment-prefix">//</span> conditions</span>
+        <span id="weather-presets-label">Conditions</span>
         <button
           class:active={weatherSource !== "manual" && weatherSource !== "fallback"}
           onclick={onRequestLiveWeather}
@@ -238,7 +263,7 @@
 
         <div class="parameter-groups">
           <section>
-            <div class="section-title"><span class="comment-prefix">//</span> sky + weather</div>
+            <div class="section-title">Sky and weather</div>
             <div class="sliders">
               <label class="slider-row">
                 <span class="slider-label"
@@ -302,7 +327,7 @@
           </section>
 
           <section>
-            <div class="section-title"><span class="comment-prefix">//</span> ocean surface</div>
+            <div class="section-title">Ocean surface</div>
             <div class="sliders">
               <label class="slider-row">
                 <span class="slider-label"
@@ -368,9 +393,7 @@
         </div>
       </details>
 
-      <button class="reset" onclick={reset}>
-        <span class="comment-prefix">//</span> reset defaults
-      </button>
+      <button class="reset" onclick={reset}> Reset defaults </button>
     </div>
   {/if}
 </div>
@@ -403,14 +426,18 @@
   }
 
   .toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     background: none;
     border: none;
-    color: var(--color-theme-text);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
+    color: var(--color-theme-muted);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 1rem;
     cursor: pointer;
     min-height: 2.75rem;
-    padding: 0.6rem 0.25rem;
+    padding: 0.6rem 0;
     text-align: left;
     transition: color 0.2s;
   }
@@ -419,15 +446,19 @@
     color: var(--color-theme-heading);
   }
 
+  .toggle :global(.chevron) {
+    transition: transform 0.2s;
+  }
+
+  .toggle[aria-expanded="true"] :global(.chevron) {
+    transform: rotate(180deg);
+  }
+
   .toggle:focus-visible,
   .preset-row button:focus-visible,
   .reset:focus-visible {
     outline: 2px solid var(--color-theme-console-accent);
     outline-offset: 3px;
-  }
-
-  .comment-prefix {
-    color: var(--color-theme-console-accent);
   }
 
   .panel {
@@ -445,7 +476,7 @@
     gap: 0.35rem 0.7rem;
     margin-bottom: 0.9rem;
     color: var(--color-theme-text);
-    font-size: 0.68rem;
+    font-size: 0.8125rem;
   }
 
   .preset-row button {
@@ -491,11 +522,10 @@
   }
 
   .section-title {
-    color: var(--color-theme-console-accent);
-    font-size: 0.7rem;
+    color: var(--color-theme-heading);
+    font-size: 0.875rem;
+    font-weight: 500;
     margin-bottom: 0.5rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
   }
 
   .equation {
@@ -512,14 +542,14 @@
 
   .eq-line {
     color: var(--color-theme-heading);
-    font-size: 0.8rem;
+    font-size: 0.9375rem;
     margin-bottom: 0.35rem;
     line-height: 1.6;
   }
 
   .eq-detail {
-    color: var(--color-theme-text);
-    font-size: 0.7rem;
+    color: var(--color-theme-muted);
+    font-size: 0.8125rem;
     margin-bottom: 0.15rem;
     line-height: 1.5;
   }
@@ -540,7 +570,7 @@
 
   .slider-label {
     color: var(--color-theme-text);
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     min-width: 4.5rem;
     width: 6.75rem;
     flex: none;
@@ -550,8 +580,9 @@
   }
 
   .slider-value {
-    color: var(--color-theme-text);
-    font-size: 0.65rem;
+    color: var(--color-theme-subtle);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
   }
 
   input[type="range"] {
@@ -595,9 +626,8 @@
     margin: 0 auto;
     background: none;
     border: none;
-    color: var(--color-theme-text);
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
+    color: var(--color-theme-muted);
+    font-size: 0.8125rem;
     cursor: pointer;
     min-height: 2.75rem;
     padding: 0.6rem 0.75rem;

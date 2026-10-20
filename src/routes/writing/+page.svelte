@@ -29,39 +29,24 @@
         <li>
           <a href="/writing/{post.slug}" class="work-link">
             <span class="work-name">
-              {post.title}
-              {#if post.draft}<span class="essay-draft">draft</span>{/if}
+              <span class="work-title">{post.title}</span>
+              <span class="meta essay-date">
+                <time datetime={post.date}>{formatted(post.date)}</time>
+                {#if post.draft}<span class="essay-draft">· draft</span>{/if}
+              </span>
             </span>
-            <span class="work-desc">
-              {post.description}
-              <span class="essay-date">— {formatted(post.date)}</span>
-            </span>
+            <span class="work-desc">{post.description}</span>
           </a>
         </li>
       {/each}
     </ul>
   </section>
 
-  <p class="text-warm-400 mt-10 text-center font-mono text-sm">// more coming as I write them</p>
+  <p class="meta mt-10">More coming as I write them.</p>
 </div>
 
 <style>
   .essay-date {
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
-    color: var(--color-sunset-amber-500);
-  }
-
-  .essay-draft {
-    margin-left: 0.375rem;
-    border: 1px solid var(--color-theme-border);
-    border-radius: 0.25rem;
-    padding: 0.0625rem 0.375rem;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 400;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--color-theme-subtle);
+    display: block;
   }
 </style>

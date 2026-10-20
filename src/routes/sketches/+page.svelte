@@ -21,7 +21,7 @@
       name: "Ascii Horizon",
       href: "/",
       desc: "The animated sunset on the home page: a mathematically generated ASCII ocean rendered off the main thread with OffscreenCanvas, driven by LA local time and lunar phase.",
-      aside: "see home →",
+      aside: "On the home page",
     },
   ];
 </script>
@@ -46,9 +46,9 @@
         <li>
           <a href={s.href} class="work-link">
             <span class="work-name">
-              {s.name}
+              <span class="work-title">{s.name}</span>
               <ArrowUpRight size={18} class="work-arrow" />
-              {#if s.aside}<span class="period">{s.aside}</span>{/if}
+              {#if s.aside}<span class="meta aside">{s.aside}</span>{/if}
             </span>
             <span class="work-desc">{s.desc}</span>
           </a>
@@ -59,13 +59,7 @@
 </div>
 
 <style>
-  .period {
-    display: inline-block;
-    margin-left: 0.5rem;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--color-sunset-amber-500);
-    font-weight: 400;
-    letter-spacing: 0.02em;
+  .aside {
+    display: block;
   }
 </style>

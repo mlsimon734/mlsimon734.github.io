@@ -65,18 +65,13 @@
             class="work-link"
           >
             <span class="work-name">
-              {p.name}
+              <span class="work-title">{p.name}</span>
               <ArrowUpRight size={18} class="work-arrow" />
-              <span class="period">{p.period}</span>
+              <span class="meta period">{p.period}</span>
             </span>
             <span class="work-desc">
               {p.desc}
-              <span class="stack">
-                {#each p.stack as s, i}
-                  <span class="tag">{s}</span>{#if i < p.stack.length - 1}<span class="sep">·</span
-                    >{/if}
-                {/each}
-              </span>
+              <span class="meta stack">{p.stack.join(", ")}</span>
             </span>
           </a>
         </li>
@@ -86,31 +81,12 @@
 </div>
 
 <style>
-  .period {
-    display: inline-block;
-    margin-left: 0.5rem;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--color-sunset-amber-500);
-    font-weight: 400;
-    letter-spacing: 0.02em;
+  .period,
+  .stack {
+    display: block;
   }
 
   .stack {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    margin-top: 0.5rem;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--color-theme-subtle);
-  }
-
-  .tag {
-    display: inline-block;
-  }
-
-  .sep {
-    color: var(--color-sunset-amber-300);
+    margin-top: 0.375rem;
   }
 </style>
