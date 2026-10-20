@@ -1,3 +1,16 @@
+import {
+  PI,
+  LUT_W,
+  LUT_H,
+  LUT_SUN_GROUND,
+  LUT_SUN_CLOUD,
+  LUT_MOON_GROUND,
+  LUT_OCCLUSION,
+  CLOUD_ALTITUDE,
+  lutDirection,
+  cloudDensity,
+} from "./common.wgsl";
+
 // Single scattering (Rayleigh, Mie, ozone absorption) through a spherical atmosphere, after
 // Nishita et al. 1993 with the coefficients of Hillaire 2020. Rows near the horizon are dense,
 // so the sunset band and the twilight arch resolve; the Earth's shadow ends the light paths.

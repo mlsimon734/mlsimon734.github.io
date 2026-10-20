@@ -1,3 +1,5 @@
+import { hash, simplex, simplexGrad } from "../vgpu/common.wgsl";
+
 // One invocation per grain, every frame: age it, let the flow carry it, and size it by distance.
 struct Point { position: vec4f, normal: vec4f, color: vec4f }
 struct Lit { position: vec4f, color: vec4f }

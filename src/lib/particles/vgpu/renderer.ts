@@ -13,12 +13,11 @@ import {
   waveSpectrum,
   type View,
 } from "./scene";
-import commonShader from "./common.wgsl?raw";
-import skyShader from "./sky.wgsl?raw";
-import fieldShader from "./field.wgsl?raw";
-import grainShader from "./grains.wgsl?raw";
-import bloomShader from "./bloom.wgsl?raw";
-import presentShader from "./present.wgsl?raw";
+import skyShader from "./sky.wgsl";
+import fieldShader from "./field.wgsl";
+import grainShader from "./grains.wgsl";
+import bloomShader from "./bloom.wgsl";
+import presentShader from "./present.wgsl";
 
 export type OceanVgpu = Awaited<ReturnType<typeof createOceanVgpu>>;
 
@@ -83,11 +82,11 @@ export async function createOceanVgpu(
     const camera = new PerspectiveCamera(30, 16 / 9, 0.5, 6000);
     camera.coordinateSystem = WebGPUCoordinateSystem;
     camera.rotation.order = "YXZ";
-    const sky = compute(gpu, commonShader + skyShader, {
+    const sky = compute(gpu, skyShader, {
       label: "sky",
       set: { lut: lutBuffer },
     });
-    const field = compute(gpu, commonShader + fieldShader, {
+    const field = compute(gpu, fieldShader, {
       label: "field",
       set: {
         grains: grainBuffer,
@@ -125,6 +124,8 @@ export async function createOceanVgpu(
       set: { scene, bloom: bloomY, halo: haloY, linearSampler },
     });
     await Promise.all([
+      sky.compile(),
+      field.compile(),
       grains.compile(scene),
       horizontal.compile(bloomX),
       vertical.compile(bloomY),

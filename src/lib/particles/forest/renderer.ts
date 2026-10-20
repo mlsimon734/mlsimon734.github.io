@@ -10,13 +10,12 @@ import {
   viewFor,
   type View,
 } from "./scene";
-// The noise, the bead shading, the bloom and the grade are the ocean's.
-import commonShader from "../vgpu/common.wgsl?raw";
-import grainShader from "../vgpu/grains.wgsl?raw";
-import bloomShader from "../vgpu/bloom.wgsl?raw";
-import presentShader from "../vgpu/present.wgsl?raw";
-import bakeShader from "./bake.wgsl?raw";
-import flowShader from "./flow.wgsl?raw";
+// The bead shading, the bloom and the grade are the ocean's; flow.wgsl borrows its noise.
+import grainShader from "../vgpu/grains.wgsl";
+import bloomShader from "../vgpu/bloom.wgsl";
+import presentShader from "../vgpu/present.wgsl";
+import bakeShader from "./bake.wgsl";
+import flowShader from "./flow.wgsl";
 
 export type ForestVgpu = Awaited<ReturnType<typeof createForestVgpu>>;
 
@@ -80,7 +79,7 @@ export async function createForestVgpu(
       label: "bake",
       set: { points: pointBuffer, lights: lightBuffer },
     });
-    const flow = compute(gpu, commonShader + flowShader, {
+    const flow = compute(gpu, flowShader, {
       label: "flow",
       set: { points: pointBuffer, state: stateBuffer, lit: litBuffer },
     });
@@ -112,6 +111,8 @@ export async function createForestVgpu(
       set: { scene, bloom: bloomY, halo: haloY, linearSampler },
     });
     await Promise.all([
+      bake.compile(),
+      flow.compile(),
       grains.compile(scene),
       horizontal.compile(bloomX),
       vertical.compile(bloomY),

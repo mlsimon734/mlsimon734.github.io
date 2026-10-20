@@ -1,3 +1,23 @@
+import {
+  PI,
+  KIND_SKY,
+  KIND_SUN,
+  KIND_MOON,
+  KIND_OCEAN,
+  LUT_W,
+  LUT_H,
+  LUT_SUN_GROUND,
+  LUT_SUN_CLOUD,
+  LUT_MOON_GROUND,
+  LUT_OCCLUSION,
+  CLOUD_ALTITUDE,
+  lutUv,
+  hash,
+  simplex,
+  simplexGrad,
+  cloudDensity,
+} from "./common.wgsl";
+
 // One invocation per grain: place it, light it, and let the flow field carry it.
 struct Grain { reference: vec4f, attributes: vec4f }
 struct Wave { shape: vec4f, motion: vec4f }
