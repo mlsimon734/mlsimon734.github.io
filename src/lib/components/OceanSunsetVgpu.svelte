@@ -212,7 +212,7 @@
     {#if failed}
       <div class="status" role="status">
         <p>This study needs WebGPU, which is unavailable here.</p>
-        <a href="/sketches/ocean-sunset" class="link">View the original ocean</a>
+        <a href="/sketches/ocean-sunset/webgl" class="link">View the WebGL version</a>
       </div>
     {:else if !renderer}
       <p class="status" role="status">Gathering the last light…</p>

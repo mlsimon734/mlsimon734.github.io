@@ -1,11 +1,11 @@
 # Last light: the WebGPU ocean
 
-The piece at `/sketches/ocean-sunset/vgpu` renders Santa Monica Bay at the current minute as a dense
+The piece at `/sketches/ocean-sunset` renders Santa Monica Bay at the current minute as a dense
 cloud of grains, in the manner of
 [cullenwebber/three-ml-sharp](https://github.com/cullenwebber/three-ml-sharp): every grain carries
 GPU state, drifts on a noise flow field, and reforms at home, so the scene reads as a single-image
-reconstruction that breathes and frays. The original Three.js ocean remains at
-`/sketches/ocean-sunset` for browsers without WebGPU.
+reconstruction that breathes and frays. The earlier Three.js ocean remains at
+`/sketches/ocean-sunset/webgl` for browsers without WebGPU.
 
 ## Inputs
 

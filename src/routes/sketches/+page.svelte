@@ -12,10 +12,10 @@
 
   const sketches: Sketch[] = [
     {
-      name: "Ocean Sunset Particles",
+      name: "Last Light",
       href: "/sketches/ocean-sunset",
-      desc: "A quiet particle sky above a moving ocean. Shared waves reveal ribbons of reflected light, with pointer-driven perspective and a pauseable still view.",
-      aside: "Three.js point cloud",
+      desc: "Santa Monica Bay at this minute as a million drifting grains: the sky from atmospheric scattering, the sea from wave spectra and sun glitter, the clouds from today's weather.",
+      aside: "WebGPU",
     },
     {
       name: "Ascii Horizon",
