@@ -88,7 +88,9 @@ const state: WorkerState = {
 
 // Workers can't see the page's web fonts, so the glyphs load their own subset of
 // JetBrains Mono. Nothing draws until it settles, so the scene never changes typeface
-// in view; if it fails, the system monospace stands in.
+// in view; if it fails, the system monospace stands in. The subset leaves out `~`:
+// JetBrains Mono's tall tilde reads as an "N" at this size, so the waves keep the
+// system monospace's flatter one.
 const glyphFont = new FontFace("JetBrains Mono", 'url("/fonts/jetbrains-mono-horizon.woff2")');
 self.fonts.add(glyphFont);
 let fontSettled = false;
