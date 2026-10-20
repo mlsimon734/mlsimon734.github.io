@@ -1,199 +1,203 @@
-import type { GridConfig, WorldParams, WeatherParams } from "./types";
-import { DEFAULT_WEATHER_PARAMS } from "./types";
-import { sampleAtmosphereGrid } from "./atmosphere";
+import type { GridConfig, WorldParams, WeatherParams, SkyParams } from "./types";
+import { DEFAULT_WEATHER_PARAMS, DEFAULT_SKY_PARAMS } from "./types";
+import { sampleAtmosphereGrid, smoothstep } from "./atmosphere";
+import { discCell, type Disc } from "./braille";
+import { CELL_ASPECT, horizonRow, placeBody } from "./frame";
+import { expectedGlint, seaView, skyReflectance } from "./waves";
+import { type Rgb, hexToRgb, mix, sunWarmth } from "./color";
 
-/** The bg-* subset of the zone palette the painted scene needs. */
+/** The bg-* subset of the zone palette the painted scene needs, plus the sun's tones. */
 export interface BackgroundPalette {
-  "bg-sky-top": string;
-  "bg-sky-low": string;
+  "bg-night-zenith": string;
+  "bg-night-horizon": string;
+  "bg-blue-zenith": string;
+  "bg-blue-horizon": string;
+  "bg-dusk-zenith": string;
+  "bg-dusk-horizon": string;
+  "bg-day-zenith": string;
+  "bg-day-horizon": string;
   "bg-glow": string;
+  "bg-aureole": string;
   "bg-moon-glow": string;
   "bg-cloud-light": string;
   "bg-cloud-shadow": string;
-  "bg-water-top": string;
   "bg-water-deep": string;
+  "sun-core": string;
+  sun: string;
 }
 
-type Rgb = readonly [number, number, number];
+type SkyKey = "night" | "blue" | "dusk" | "day";
 
-// 4×4 Bayer ordered-dither thresholds; the painted washes quantize into a
-// few flat bands and dither between them so the background sits at the same
-// chunky cell resolution as the glyphs instead of a smooth gradient.
-const BAYER_4X4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5] as const;
+// Sky keyframes by solar elevation in degrees: astronomical night, blue hour,
+// the moment of sunset, and full day. Between them the wash eases continuously.
+const SKY_KEYFRAMES: readonly { elevation: number; key: SkyKey }[] = [
+  { elevation: -15, key: "night" },
+  { elevation: -6, key: "blue" },
+  { elevation: 0.5, key: "dusk" },
+  { elevation: 16, key: "day" },
+];
 
-const SKY_LEVELS = 8;
-const WATER_LEVELS = 8;
-const GLOW_LEVELS = 7;
-
-// Character cells are roughly twice as tall as wide; used to keep the
-// sun/moon halo circular in pixel space while working in cell coordinates.
-const CELL_ASPECT = 0.52;
-const HALO_RADIUS_ROWS = 7.5;
-
-function hexToRgb(hex: string): Rgb {
-  const clean = hex.replace("#", "");
-  const full =
-    clean.length === 3
-      ? clean
-          .split("")
-          .map((ch) => ch + ch)
-          .join("")
-      : clean;
-  return [
-    parseInt(full.slice(0, 2), 16),
-    parseInt(full.slice(2, 4), 16),
-    parseInt(full.slice(4, 6), 16),
-  ];
-}
-
-function bayerThreshold(x: number, y: number): number {
-  return (BAYER_4X4[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
-}
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value));
-}
-
-/** Quantize t into `levels` bands, dithering the boundary with the Bayer threshold. */
-function ditherQuantize(t: number, levels: number, threshold: number): number {
-  const v = clamp01(t) * (levels - 1);
-  const base = Math.floor(v);
-  const idx = v - base > threshold ? base + 1 : base;
-  return Math.min(idx, levels - 1) / (levels - 1);
-}
-
-function mix(a: Rgb, b: Rgb, t: number): Rgb {
-  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+function skyAt(
+  palette: BackgroundPalette,
+  elevationDegrees: number,
+): { zenith: Rgb; horizon: Rgb } {
+  const pick = (key: SkyKey) => ({
+    zenith: hexToRgb(palette[`bg-${key}-zenith`]),
+    horizon: hexToRgb(palette[`bg-${key}-horizon`]),
+  });
+  const first = SKY_KEYFRAMES[0];
+  if (elevationDegrees <= first.elevation) return pick(first.key);
+  for (let i = 1; i < SKY_KEYFRAMES.length; i++) {
+    const lower = SKY_KEYFRAMES[i - 1];
+    const upper = SKY_KEYFRAMES[i];
+    if (elevationDegrees <= upper.elevation) {
+      const t = smoothstep(lower.elevation, upper.elevation, elevationDegrees);
+      const a = pick(lower.key);
+      const b = pick(upper.key);
+      return { zenith: mix(a.zenith, b.zenith, t), horizon: mix(a.horizon, b.horizon, t) };
+    }
+  }
+  return pick(SKY_KEYFRAMES[SKY_KEYFRAMES.length - 1].key);
 }
 
 /**
- * Render the painted scene background at one pixel per character cell.
- * Callers scale it up without smoothing so the wash stays quantized to the
- * same grid as the glyphs. Returns RGBA pixels, config.width × config.height.
+ * Render the painted wash behind the glyphs at one pixel per character cell; callers
+ * scale it up smoothly. The sky eases through keyframes set by the sun's elevation,
+ * with a warm band and halo around the sun and a cool one around the moon. The sea
+ * mirrors the sky above it by the Fresnel reflectance of its viewing angle, darkening
+ * toward the viewer, and carries the glitter path's smooth body under the glyphs.
+ * Returns RGBA pixels, config.width × config.height.
  */
 export function renderBackgroundPixels(
   config: GridConfig,
   palette: BackgroundPalette,
-  world: Pick<
-    WorldParams,
-    | "sunX"
-    | "sunY"
-    | "sunVisibility"
-    | "sunElevation"
-    | "moonX"
-    | "moonY"
-    | "moonVisibility"
-    | "horizonGlow"
-    | "nightFactor"
-    | "moonIllum"
-    | "waterTime"
-    | "dayOfYear"
-  >,
+  world: WorldParams,
   weather: WeatherParams = DEFAULT_WEATHER_PARAMS,
   atmosphereGrid = sampleAtmosphereGrid(config, world, weather),
+  skyParams: SkyParams = DEFAULT_SKY_PARAMS,
 ): Uint8ClampedArray<ArrayBuffer> {
   const { width, height } = config;
-  const skyTop = hexToRgb(palette["bg-sky-top"]);
+  const seaTop = horizonRow(config);
+  const elevation = Math.asin(world.sunElevation);
+  const sky = skyAt(palette, (elevation * 180) / Math.PI);
   const glow = hexToRgb(palette["bg-glow"]);
   const moonGlow = hexToRgb(palette["bg-moon-glow"]);
   const cloudLight = hexToRgb(palette["bg-cloud-light"]);
   const cloudShadow = hexToRgb(palette["bg-cloud-shadow"]);
-  const waterDeep = hexToRgb(palette["bg-water-deep"]);
-  // Deep night pulls the dusk band toward the zenith color so midnight
-  // doesn't keep wearing sunset tones; dusk itself stays warm.
-  const nightT = world.nightFactor;
-  const skyLow = mix(hexToRgb(palette["bg-sky-low"]), skyTop, 0.65 * nightT);
-  const waterTop = mix(hexToRgb(palette["bg-water-top"]), waterDeep, 0.5 * nightT);
+  // The sea's own body color is the sky's light scattered back out of the water.
+  const waterBody = mix(hexToRgb(palette["bg-water-deep"]), sky.zenith, 0.5);
+  const warmth = sunWarmth(world);
+  const sunTone = mix(hexToRgb(palette.sun), hexToRgb(palette["sun-core"]), 1 - warmth);
+  // The light around the sun: an orange glow on the horizon, a pale aureole up high.
+  const aureole = mix(glow, hexToRgb(palette["bg-aureole"]), 1 - warmth);
+  const glowStrength = Math.min(1, world.horizonGlow);
+  // After sunset the afterglow spreads along the horizon before it fades.
+  const glowWidth = 0.2 + 0.22 * (1 - world.sunVisibility);
+  // Clouds turn to silhouettes at night; at dusk their undersides catch the glow
+  // near the sun.
+  const cloudNight = mix(cloudShadow, sky.zenith, 0.6);
 
-  const horizonRow = Math.floor(height * 0.65);
-  const glowStrength = clamp01(world.horizonGlow);
-  const sunCol = world.sunX * width;
-  const sunRow = world.sunY * height;
-  const moonCol = world.moonX * width;
-  const moonRow = world.moonY * height;
+  const sun = placeBody(world.sunX, world.sunY, elevation, config, skyParams);
+  const moonElevation = Math.asin(world.moonElevation);
+  const moon = placeBody(
+    world.moonX,
+    world.moonY,
+    moonElevation,
+    config,
+    skyParams,
+    world.moonPhase,
+  );
+  const moonLight = world.moonVisibility * (0.25 + 0.75 * world.moonIllum);
+  const sunU = sun.col / width;
 
   const pixels = new Uint8ClampedArray(width * height * 4);
+  const put = (x: number, y: number, rgb: Rgb) => {
+    const i = (y * width + x) * 4;
+    pixels[i] = rgb[0];
+    pixels[i + 1] = rgb[1];
+    pixels[i + 2] = rgb[2];
+    pixels[i + 3] = 255;
+  };
+  const halo = (x: number, y: number, body: Disc, reach: number) => {
+    const dc = (x + 0.5 - body.col) / CELL_ASPECT;
+    const dr = y + 0.5 - body.row;
+    const r = Math.sqrt(dc * dc + dr * dr) / body.radiusRows;
+    return Math.exp(-Math.max(0, r - 1) / reach);
+  };
+  // The lit disc glows in the wash, so the braille dots above it read as one body.
+  const disc = (x: number, y: number, body: Disc) => discCell(body, x, y)?.coverage ?? 0;
 
-  for (let y = 0; y < height; y++) {
+  for (let y = 0; y < seaTop; y++) {
+    const t = (seaTop - (y + 0.5)) / seaTop;
+    const base = mix(sky.horizon, sky.zenith, 1 - Math.pow(1 - t, 2.4));
     for (let x = 0; x < width; x++) {
-      const threshold = bayerThreshold(x, y);
       const u = (x + 0.5) / width;
-      const sunDxNorm = u - world.sunX;
-      const moonDxNorm = u - world.moonX;
-      let rgb: Rgb;
-      let sunGlowMix = 0;
-      let moonGlowMix = 0;
+      const du = u - sunU;
+      let rgb = base;
 
-      if (y < horizonRow) {
-        const skyT = y / Math.max(horizonRow - 1, 1);
-        rgb = mix(skyTop, skyLow, ditherQuantize(skyT, SKY_LEVELS, threshold));
-        const lateral = Math.exp(-(sunDxNorm * sunDxNorm) / (2 * 0.32 * 0.32));
-        sunGlowMix = 0.85 * glowStrength * lateral * Math.pow(skyT, 1.6);
+      const band =
+        glowStrength *
+        (0.75 * Math.exp(-(du * du) / (2 * glowWidth * glowWidth)) + 0.25) *
+        Math.exp(-t / 0.28);
+      rgb = mix(rgb, glow, 0.8 * band);
+      rgb = mix(rgb, aureole, 0.45 * world.sunVisibility * halo(x, y, sun, 1.2));
+      rgb = mix(rgb, moonGlow, 0.45 * moonLight * halo(x, y, moon, 0.9));
 
-        const atmosphere = atmosphereGrid[y * width + x];
-        const daylightHaze = mix(skyLow, glow, 0.28 * glowStrength);
-        const hazeTint = mix(daylightHaze, moonGlow, nightT);
-        rgb = mix(rgb, hazeTint, ditherQuantize(atmosphere.haze * 0.28, 5, threshold));
-        const litCloud = mix(
-          cloudShadow,
-          cloudLight,
-          clamp01(atmosphere.cloudLight + Math.max(0, world.sunElevation) * 0.24),
-        );
-        rgb = mix(
-          rgb,
-          litCloud,
-          ditherQuantize(atmosphere.cloud * (0.52 + 0.2 * atmosphere.cloudEdge), 6, threshold),
-        );
-      } else {
-        const waterT = (y - horizonRow) / Math.max(height - 1 - horizonRow, 1);
-        rgb = mix(
-          waterTop,
-          waterDeep,
-          ditherQuantize(Math.pow(waterT, 0.85), WATER_LEVELS, threshold),
-        );
-        const sunLateral = Math.exp(-(sunDxNorm * sunDxNorm) / (2 * 0.18 * 0.18));
-        const moonLateral = Math.exp(-(moonDxNorm * moonDxNorm) / (2 * 0.14 * 0.14));
-        sunGlowMix = 0.4 * glowStrength * sunLateral * world.sunVisibility * (1 - waterT);
-        // Subtle cool wash under the moonglint column.
-        moonGlowMix = 0.22 * world.moonIllum * world.moonVisibility * moonLateral * (1 - waterT);
-        rgb = mix(
-          rgb,
-          skyLow,
-          ditherQuantize(weather.humidity * Math.pow(1 - waterT, 4) * 0.14, 4, threshold),
+      const atmosphere = atmosphereGrid[y * width + x];
+      rgb = mix(rgb, sky.horizon, 0.35 * atmosphere.haze);
+      const sunward = glowStrength * Math.exp(-(du * du) / (2 * 0.3 * 0.3));
+      const warmCloud = mix(cloudLight, glow, 0.65 * sunward * (0.4 + 0.6 * Math.exp(-t / 0.5)));
+      const cloudLit = mix(cloudShadow, warmCloud, atmosphere.cloudLight);
+      const cloudColor = mix(cloudLit, cloudNight, world.nightFactor);
+      rgb = mix(rgb, cloudColor, 0.7 * atmosphere.cloud);
+      put(x, y, rgb);
+    }
+  }
+
+  const sunLight = { x: sunU, elevation };
+  const moonSource = { x: moon.col / width, elevation: moonElevation };
+  for (let y = seaTop; y < height; y++) {
+    const view = seaView((y + 0.5 - seaTop) / height, width, height);
+    const reflectance = Math.min(0.7, skyReflectance(view));
+    const mirrorRow = Math.max(0, 2 * seaTop - 1 - y);
+    for (let x = 0; x < width; x++) {
+      const u = (x + 0.5) / width;
+      const i = (mirrorRow * width + x) * 4;
+      const mirrored: Rgb = [pixels[i], pixels[i + 1], pixels[i + 2]];
+      let rgb = mix(waterBody, mirrored, reflectance);
+      if (world.sunVisibility > 0.01) {
+        const body = expectedGlint(u, view, sunLight, weather.windSpeed) * world.sunVisibility;
+        rgb = mix(rgb, aureole, 0.5 * body);
+      }
+      if (moonLight > 0.01) {
+        const body = expectedGlint(u, view, moonSource, weather.windSpeed) * moonLight;
+        rgb = mix(rgb, moonGlow, 0.45 * body);
+      }
+      put(x, y, rgb);
+    }
+  }
+
+  // Discs go on last: the sea mirrors the sky's light, but waves break the bodies
+  // themselves into glitter rather than a mirror image.
+  for (const [body, color, strength] of [
+    [sun, mix(sunTone, aureole, 0.5), 0.85 * world.sunVisibility * world.sunVisibility],
+    [moon, moonGlow, 0.6 * moonLight],
+  ] as const) {
+    if (strength <= 0.01) continue;
+    for (let y = Math.max(0, Math.floor(body.row - body.radiusRows)); y < seaTop; y++) {
+      if (y > body.row + body.radiusRows) break;
+      for (let x = Math.max(0, Math.floor(body.col - body.radiusCols)); x < width; x++) {
+        if (x > body.col + body.radiusCols) break;
+        const coverage = disc(x, y, body);
+        if (coverage <= 0) continue;
+        const i = (y * width + x) * 4;
+        const veil = 1 - 0.7 * atmosphereGrid[y * width + x].cloud;
+        put(
+          x,
+          y,
+          mix([pixels[i], pixels[i + 1], pixels[i + 2]], color, strength * veil * coverage),
         );
       }
-
-      // Independent halos make twilight continuous: neither body replaces the other.
-      // Column offsets compensate for the tall character-cell aspect ratio.
-      const sunDCol = (x - sunCol) * CELL_ASPECT;
-      const sunDRow = y - sunRow;
-      const sunHaloDist = Math.sqrt(sunDCol * sunDCol + sunDRow * sunDRow) / HALO_RADIUS_ROWS;
-      const sunHalo = Math.max(0, 1 - sunHaloDist);
-      sunGlowMix += 0.5 * world.sunVisibility * sunHalo * sunHalo;
-
-      const moonDCol = (x - moonCol) * CELL_ASPECT;
-      const moonDRow = y - moonRow;
-      const moonHaloDist = Math.sqrt(moonDCol * moonDCol + moonDRow * moonDRow) / HALO_RADIUS_ROWS;
-      const moonHalo = Math.max(0, 1 - moonHaloDist);
-      moonGlowMix +=
-        0.4 * world.moonVisibility * (0.35 + 0.65 * world.moonIllum) * moonHalo * moonHalo;
-
-      const sunMixed = mix(
-        rgb,
-        glow,
-        ditherQuantize(Math.min(sunGlowMix, 0.9), GLOW_LEVELS, threshold),
-      );
-      const mixed = mix(
-        sunMixed,
-        moonGlow,
-        ditherQuantize(Math.min(moonGlowMix, 0.75), GLOW_LEVELS, threshold),
-      );
-
-      const idx = (y * width + x) * 4;
-      pixels[idx] = mixed[0];
-      pixels[idx + 1] = mixed[1];
-      pixels[idx + 2] = mixed[2];
-      pixels[idx + 3] = 255;
     }
   }
 

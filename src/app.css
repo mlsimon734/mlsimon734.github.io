@@ -72,74 +72,94 @@
   --color-theme-selection: var(--color-sunset-amber-100);
   --color-theme-console-accent: #875800;
 
-  /* Horizon visualization — dark navy postcard palette. The particles sketch reads
-     these from the document root; the ASCII postcard overrides them per-theme via
-     the .horizon-scene scope below. */
+  /* Horizon glyph colors for the particles sketch, which reads them from the
+     document root. The ASCII scene sets its own full palette under .horizon-scene. */
   --color-horizon-star: #ffe7a3;
   --color-horizon-sky: #59708d;
-  --color-horizon-sky-glow: #ff7a32;
   --color-horizon-cloud-light: #8fa0ae;
   --color-horizon-cloud-shadow: #415469;
   --color-horizon-rain: #6f8ba3;
   --color-horizon-spray: #d6e5e8;
   --color-horizon-sun-core: #ffd166;
   --color-horizon-sun: #ff9f3f;
-  --color-horizon-horizon: #e85d2a;
   --color-horizon-water: #1f5f7a;
   --color-horizon-water-reflect: #ffd166;
   --color-horizon-water-reflect-warm: #f08a4b;
   --color-horizon-water-reflect-cool: #376d8d;
   --color-horizon-foam: #c4d8dc;
-  --color-horizon-water-far: #243b6b;
 }
 
-/* Horizon postcard scene — navy postcard by default (dark theme + fallback).
-   The renderers paint a sky/glow/water gradient from the bg-* ramp behind the
-   glyphs, so the piece carries its own scene instead of relying on the card. */
+/* ASCII horizon scene. Glyph tokens color the characters (opacity carries their
+   tone); bg-* tokens paint the wash behind them. The sky eases between the night,
+   blue-hour, dusk, and day keyframes as the sun moves; the sea mirrors it. The sun
+   and its glitter blend from sun-core (high) to sun (on the horizon). Hex only:
+   the worker mixes these numerically. Dark theme: light glyphs over a dusk wash. */
 .horizon-scene {
-  --color-horizon-bg: #08111d;
-  --color-horizon-bg-sky-top: #081018;
-  --color-horizon-bg-sky-low: #2a2440;
-  --color-horizon-bg-glow: #7d3418;
-  --color-horizon-bg-moon-glow: #2e4059;
-  --color-horizon-bg-cloud-light: #4c5c69;
-  --color-horizon-bg-cloud-shadow: #172433;
-  --color-horizon-bg-water-top: #0d2233;
-  --color-horizon-bg-water-deep: #071018;
-  --color-horizon-moon-core: #eef2f7;
-  --color-horizon-moon: #b9c7d9;
+  --color-horizon-bg: #050a12;
+  --color-horizon-bg-night-zenith: #04080f;
+  --color-horizon-bg-night-horizon: #0c1726;
+  --color-horizon-bg-blue-zenith: #08122a;
+  --color-horizon-bg-blue-horizon: #24345a;
+  --color-horizon-bg-dusk-zenith: #121833;
+  --color-horizon-bg-dusk-horizon: #563847;
+  --color-horizon-bg-day-zenith: #132c48;
+  --color-horizon-bg-day-horizon: #3a5b78;
+  --color-horizon-bg-glow: #c2602b;
+  --color-horizon-bg-aureole: #e9dcbc;
+  --color-horizon-bg-moon-glow: #2f4560;
+  --color-horizon-bg-cloud-light: #5f5a6a;
+  --color-horizon-bg-cloud-shadow: #1b2335;
+  --color-horizon-bg-water-deep: #040a12;
+  --color-horizon-star: #f6e7c4;
+  --color-horizon-sky: #59708d;
+  --color-horizon-cloud-light: #b9b0b8;
+  --color-horizon-cloud-shadow: #5d687c;
+  --color-horizon-rain: #7d93ab;
+  --color-horizon-spray: #cfdde2;
+  --color-horizon-sun-core: #fff1cc;
+  --color-horizon-sun: #f0612a;
+  --color-horizon-moon-core: #e8edf3;
+  --color-horizon-moon: #8a98ad;
+  --color-horizon-water: #9bb7cc;
+  --color-horizon-water-reflect: #ffd27a;
+  --color-horizon-water-reflect-warm: #f48a45;
+  --color-horizon-water-reflect-cool: #cdd9e5;
+  --color-horizon-foam: #dbe7ea;
 }
 
-/* Light theme: a day-lit postcard — pale blue sky, deeper blue ocean, warm
-   glow near the sun. Glyphs read as ink over the painted washes. */
+/* Light theme: the same scene as ink on tinted paper. The moon is left as paper,
+   the way an almanac draws its phases. */
 :root:not([data-theme="dark"]) .horizon-scene {
-  --color-horizon-bg: #fdf6ea;
-  --color-horizon-bg-sky-top: #b9d6ea;
-  --color-horizon-bg-sky-low: #e8d9bf;
-  --color-horizon-bg-glow: #f4b061;
-  --color-horizon-bg-moon-glow: #6f94b8;
-  --color-horizon-bg-cloud-light: #e4e7e5;
-  --color-horizon-bg-cloud-shadow: #8799a5;
-  --color-horizon-bg-water-top: #93bad2;
-  --color-horizon-bg-water-deep: #5d87a9;
-  --color-horizon-star: #b97f2b;
+  --color-horizon-bg: #f4f1ea;
+  --color-horizon-bg-night-zenith: #aebbcd;
+  --color-horizon-bg-night-horizon: #d3d9e2;
+  --color-horizon-bg-blue-zenith: #b9c4d9;
+  --color-horizon-bg-blue-horizon: #dddbe5;
+  --color-horizon-bg-dusk-zenith: #d8d4e6;
+  --color-horizon-bg-dusk-horizon: #f4d6bb;
+  --color-horizon-bg-day-zenith: #cadeed;
+  --color-horizon-bg-day-horizon: #efeee5;
+  --color-horizon-bg-glow: #f2b283;
+  --color-horizon-bg-aureole: #fff7e2;
+  --color-horizon-bg-moon-glow: #f3f6fa;
+  --color-horizon-bg-cloud-light: #f8f3eb;
+  --color-horizon-bg-cloud-shadow: #b7bfcb;
+  --color-horizon-bg-water-deep: #9fb4c6;
+  --color-horizon-star: #3f4c63;
   --color-horizon-sky: #7391ab;
-  --color-horizon-sky-glow: #e56f33;
-  --color-horizon-cloud-light: #f5f0e5;
-  --color-horizon-cloud-shadow: #637f92;
-  --color-horizon-rain: #486b82;
-  --color-horizon-spray: #f6fbfc;
-  --color-horizon-sun-core: #f28405;
-  --color-horizon-sun: #e2650b;
-  --color-horizon-moon-core: #f4f9fd;
-  --color-horizon-moon: #7e9cb8;
-  --color-horizon-horizon: #d14e17;
-  --color-horizon-water: #2b5876;
-  --color-horizon-water-reflect: #e8940f;
-  --color-horizon-water-reflect-warm: #d1713a;
-  --color-horizon-water-reflect-cool: #e4f1f7;
-  --color-horizon-foam: #eff9fa;
-  --color-horizon-water-far: #24476b;
+  --color-horizon-cloud-light: #857b86;
+  --color-horizon-cloud-shadow: #5d697c;
+  --color-horizon-rain: #4f6b85;
+  --color-horizon-spray: #6b8597;
+  --color-horizon-sun-core: #d6941c;
+  --color-horizon-sun: #cf4316;
+  --color-horizon-moon-core: #fdfcf8;
+  --color-horizon-moon: #6d7d95;
+  --color-horizon-water: #24496a;
+  --color-horizon-water-reflect: #c77506;
+  --color-horizon-water-reflect-warm: #cf5520;
+  --color-horizon-water-reflect-cool: #536f8c;
+  --color-horizon-foam: #6f899c;
 }
 
 html[data-theme="dark"] {

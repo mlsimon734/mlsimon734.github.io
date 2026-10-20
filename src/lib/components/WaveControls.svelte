@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from "svelte";
   import { slide } from "svelte/transition";
   import {
     DEFAULT_WAVE_PARAMS,
@@ -18,6 +19,7 @@
     weatherSource,
     onRequestLiveWeather,
     onManualWeather,
+    children,
   }: {
     params: WaveParams;
     skyParams: SkyParams;
@@ -25,6 +27,8 @@
     weatherSource: WeatherSource;
     onRequestLiveWeather: () => void;
     onManualWeather: () => void;
+    /** Rendered at the end of the readout line, e.g. the motion control. */
+    children?: Snippet;
   } = $props();
   let open = $state(false);
   let reducedMotion = $state(false);
@@ -153,11 +157,14 @@
 </script>
 
 <div class="wave-controls font-mono">
-  <button class="toggle" onclick={() => (open = !open)} aria-expanded={open}>
-    <span class="comment-prefix">//</span> model · {weatherSourceLabel} · {compass}
-    {weatherParams.windSpeed.toFixed(1)}
-    m/s · {Math.round(weatherParams.cloudCover * 100)}% cloud {open ? "▴" : "▾"}
-  </button>
+  <div class="readout">
+    <button class="toggle" onclick={() => (open = !open)} aria-expanded={open}>
+      <span class="comment-prefix">//</span> model · {weatherSourceLabel} · {compass}
+      {weatherParams.windSpeed.toFixed(1)}
+      m/s · {Math.round(weatherParams.cloudCover * 100)}% cloud {open ? "▴" : "▾"}
+    </button>
+    {#if children}<div class="trailing">{@render children()}</div>{/if}
+  </div>
 
   {#if open}
     <div class="panel" transition:slide={{ duration: reducedMotion ? 0 : 200 }}>
@@ -382,14 +389,20 @@
     outline-offset: 3px;
   }
 
-  .wave-controls {
-    margin-top: 0.5rem;
-    text-align: center;
+  /* One quiet caption line under the piece: the model readout, then any trailing control. */
+  .readout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0 1rem;
+  }
+
+  .trailing {
+    margin-left: auto;
   }
 
   .toggle {
-    display: block;
-    margin: 0 auto;
     background: none;
     border: none;
     color: var(--color-theme-text);
@@ -397,7 +410,8 @@
     font-size: 0.75rem;
     cursor: pointer;
     min-height: 2.75rem;
-    padding: 0.6rem 0.75rem;
+    padding: 0.6rem 0.25rem;
+    text-align: left;
     transition: color 0.2s;
   }
 
@@ -577,6 +591,8 @@
   }
 
   .reset {
+    display: block;
+    margin: 0 auto;
     background: none;
     border: none;
     color: var(--color-theme-text);

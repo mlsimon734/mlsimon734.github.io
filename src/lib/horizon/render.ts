@@ -1,40 +1,18 @@
-import type { AsciiCell, GridConfig } from "./types";
+import type { AsciiCell, GridConfig, WorldParams } from "./types";
+import type { BackgroundPalette } from "./background";
+import { hexToRgb, mix, rgbString, sunWarmth } from "./color";
+
+type Zone = AsciiCell["zone"];
 
 export interface AsciiRun {
   chars: string;
-  zone: AsciiCell["zone"];
+  zone: Zone;
+  tone: number;
   twinkleDelay?: number;
 }
 
-export interface ZonePalette {
-  star: string;
-  sky: string;
-  "sky-glow": string;
-  "cloud-light": string;
-  "cloud-shadow": string;
-  rain: string;
-  spray: string;
-  "sun-core": string;
-  sun: string;
-  "moon-core": string;
-  moon: string;
-  horizon: string;
-  water: string;
-  "water-reflect": string;
-  "water-reflect-warm": string;
-  "water-reflect-cool": string;
-  foam: string;
-  "water-far": string;
-  /* Painted scene background ramp (not glyph zones) */
-  "bg-sky-top": string;
-  "bg-sky-low": string;
-  "bg-glow": string;
-  "bg-moon-glow": string;
-  "bg-cloud-light": string;
-  "bg-cloud-shadow": string;
-  "bg-water-top": string;
-  "bg-water-deep": string;
-}
+/** Glyph colors per zone, plus the painted background ramp. All tokens are hex. */
+export type ZonePalette = Record<Zone, string> & BackgroundPalette;
 
 export interface MonoMetrics {
   font: string;
@@ -48,87 +26,120 @@ export interface MonoMetrics {
 export const CANVAS_FONT_SIZE = 11;
 export const CANVAS_LINE_HEIGHT = 1.15;
 
-const ZONE_VARIABLES: Record<AsciiCell["zone"], string> = {
-  star: "--color-horizon-star",
-  sky: "--color-horizon-sky",
-  "sky-glow": "--color-horizon-sky-glow",
-  "cloud-light": "--color-horizon-cloud-light",
-  "cloud-shadow": "--color-horizon-cloud-shadow",
-  rain: "--color-horizon-rain",
-  spray: "--color-horizon-spray",
-  "sun-core": "--color-horizon-sun-core",
-  sun: "--color-horizon-sun",
-  "moon-core": "--color-horizon-moon-core",
-  moon: "--color-horizon-moon",
-  horizon: "--color-horizon-horizon",
-  water: "--color-horizon-water",
-  "water-reflect": "--color-horizon-water-reflect",
-  "water-reflect-warm": "--color-horizon-water-reflect-warm",
-  "water-reflect-cool": "--color-horizon-water-reflect-cool",
-  foam: "--color-horizon-foam",
-  "water-far": "--color-horizon-water-far",
-};
+const ZONES: readonly Zone[] = [
+  "star",
+  "sky",
+  "cloud-light",
+  "cloud-shadow",
+  "rain",
+  "spray",
+  "sun-core",
+  "sun",
+  "moon-core",
+  "moon",
+  "water",
+  "water-reflect",
+  "water-reflect-warm",
+  "water-reflect-cool",
+  "foam",
+];
 
-const BACKGROUND_VARIABLES = {
-  "bg-sky-top": "--color-horizon-bg-sky-top",
-  "bg-sky-low": "--color-horizon-bg-sky-low",
-  "bg-glow": "--color-horizon-bg-glow",
-  "bg-moon-glow": "--color-horizon-bg-moon-glow",
-  "bg-cloud-light": "--color-horizon-bg-cloud-light",
-  "bg-cloud-shadow": "--color-horizon-bg-cloud-shadow",
-  "bg-water-top": "--color-horizon-bg-water-top",
-  "bg-water-deep": "--color-horizon-bg-water-deep",
-} as const;
+const BACKGROUND_KEYS: readonly Exclude<keyof BackgroundPalette, Zone>[] = [
+  "bg-night-zenith",
+  "bg-night-horizon",
+  "bg-blue-zenith",
+  "bg-blue-horizon",
+  "bg-dusk-zenith",
+  "bg-dusk-horizon",
+  "bg-day-zenith",
+  "bg-day-horizon",
+  "bg-glow",
+  "bg-aureole",
+  "bg-moon-glow",
+  "bg-cloud-light",
+  "bg-cloud-shadow",
+  "bg-water-deep",
+];
 
+/**
+ * Group a row into draw calls. Cells sharing zone, tone, and twinkle extend a run, and
+ * blank cells join whatever run is open, so a broken line of waves is a single call.
+ */
 export function encodeRuns(grid: AsciiCell[][]): AsciiRun[][] {
   return grid.map((row) => {
     const runs: AsciiRun[] = [];
-    let current: AsciiRun = { chars: "", zone: row[0].zone, twinkleDelay: row[0].twinkleDelay };
+    let current: AsciiRun | null = null;
 
     for (const cell of row) {
-      if (cell.zone === current.zone) {
+      const tone = cell.tone ?? 1;
+      if (
+        current &&
+        (cell.char === " " ||
+          (cell.zone === current.zone &&
+            tone === current.tone &&
+            cell.twinkleDelay === current.twinkleDelay))
+      ) {
         current.chars += cell.char;
         continue;
       }
-
+      current = { chars: cell.char, zone: cell.zone, tone, twinkleDelay: cell.twinkleDelay };
       runs.push(current);
-      current = { chars: cell.char, zone: cell.zone, twinkleDelay: cell.twinkleDelay };
     }
 
-    runs.push(current);
     return runs;
   });
 }
 
+function recordOf<K extends string>(
+  keys: readonly K[],
+  value: (key: K) => string,
+): Record<K, string> {
+  return Object.fromEntries(keys.map((key) => [key, value(key)])) as Record<K, string>;
+}
+
 export function resolveZonePalette(styles: CSSStyleDeclaration): ZonePalette {
-  return {
-    star: styles.getPropertyValue(ZONE_VARIABLES.star).trim(),
-    sky: styles.getPropertyValue(ZONE_VARIABLES.sky).trim(),
-    "sky-glow": styles.getPropertyValue(ZONE_VARIABLES["sky-glow"]).trim(),
-    "cloud-light": styles.getPropertyValue(ZONE_VARIABLES["cloud-light"]).trim(),
-    "cloud-shadow": styles.getPropertyValue(ZONE_VARIABLES["cloud-shadow"]).trim(),
-    rain: styles.getPropertyValue(ZONE_VARIABLES.rain).trim(),
-    spray: styles.getPropertyValue(ZONE_VARIABLES.spray).trim(),
-    "sun-core": styles.getPropertyValue(ZONE_VARIABLES["sun-core"]).trim(),
-    sun: styles.getPropertyValue(ZONE_VARIABLES.sun).trim(),
-    "moon-core": styles.getPropertyValue(ZONE_VARIABLES["moon-core"]).trim(),
-    moon: styles.getPropertyValue(ZONE_VARIABLES.moon).trim(),
-    horizon: styles.getPropertyValue(ZONE_VARIABLES.horizon).trim(),
-    water: styles.getPropertyValue(ZONE_VARIABLES.water).trim(),
-    "water-reflect": styles.getPropertyValue(ZONE_VARIABLES["water-reflect"]).trim(),
-    "water-reflect-warm": styles.getPropertyValue(ZONE_VARIABLES["water-reflect-warm"]).trim(),
-    "water-reflect-cool": styles.getPropertyValue(ZONE_VARIABLES["water-reflect-cool"]).trim(),
-    foam: styles.getPropertyValue(ZONE_VARIABLES.foam).trim(),
-    "water-far": styles.getPropertyValue(ZONE_VARIABLES["water-far"]).trim(),
-    "bg-sky-top": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-sky-top"]).trim(),
-    "bg-sky-low": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-sky-low"]).trim(),
-    "bg-glow": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-glow"]).trim(),
-    "bg-moon-glow": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-moon-glow"]).trim(),
-    "bg-cloud-light": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-cloud-light"]).trim(),
-    "bg-cloud-shadow": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-cloud-shadow"]).trim(),
-    "bg-water-top": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-water-top"]).trim(),
-    "bg-water-deep": styles.getPropertyValue(BACKGROUND_VARIABLES["bg-water-deep"]).trim(),
-  };
+  return recordOf([...ZONES, ...BACKGROUND_KEYS], (key) =>
+    styles.getPropertyValue(`--color-horizon-${key}`).trim(),
+  );
+}
+
+/**
+ * Glyph colors for this moment. The sun and its glitter redden as it nears the
+ * horizon, and lit cloud picks up the warm band at dusk; other zones are fixed.
+ */
+export function sceneColors(
+  palette: ZonePalette,
+  world: Pick<WorldParams, "sunElevation" | "horizonGlow" | "sunVisibility">,
+): Record<Zone, string> {
+  const warmth = sunWarmth(world);
+  const high = hexToRgb(palette["sun-core"]);
+  const low = hexToRgb(palette.sun);
+  const gold = hexToRgb(palette["water-reflect"]);
+  const ember = hexToRgb(palette["water-reflect-warm"]);
+  const dusk = Math.min(1, world.horizonGlow) * (0.3 + 0.7 * world.sunVisibility);
+  const colors = recordOf(ZONES, (zone) => palette[zone]);
+
+  // The disc's dots burn a little hotter than the glow painted beneath them.
+  colors["sun-core"] = rgbString(mix(high, mix(low, gold, 0.6), warmth));
+  colors.sun = rgbString(mix(mix(high, gold, 0.3), mix(low, gold, 0.25), warmth));
+  colors["water-reflect"] = rgbString(mix(high, gold, warmth));
+  colors["water-reflect-warm"] = rgbString(mix(gold, ember, warmth));
+  // At dusk the sea reflects the warm band, so its strokes take a little of it.
+  colors.water = rgbString(mix(hexToRgb(palette.water), mix(low, gold, 0.5), 0.3 * dusk));
+  colors["cloud-light"] = rgbString(
+    mix(hexToRgb(palette["cloud-light"]), mix(low, gold, 0.3), 0.3 * dusk),
+  );
+  return colors;
+}
+
+/**
+ * Opacity multiplier for glyph tones. Over a pale wash the glyphs are ink, and
+ * dark ink blended toward paper loses contrast faster than light glyphs do toward
+ * night, so a light palette lifts every tone.
+ */
+export function toneGain(palette: ZonePalette): number {
+  const [r, g, b] = hexToRgb(palette["bg-day-horizon"]);
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.5 ? 1.45 : 1;
 }
 
 export function createMonoMetrics(config: GridConfig, charWidth: number): MonoMetrics {

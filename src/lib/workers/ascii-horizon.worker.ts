@@ -2,14 +2,23 @@
 
 import {
   generateHorizon,
+  type AsciiCell,
   type GridConfig,
   type SkyParams,
   type WaveParams,
   type WeatherParams,
 } from "#lib/horizon/index.js";
 import { renderBackgroundPixels } from "#lib/horizon/background.js";
-import { encodeRuns, type MonoMetrics, type ZonePalette } from "#lib/horizon/render.js";
+import {
+  encodeRuns,
+  sceneColors,
+  toneGain,
+  type MonoMetrics,
+  type ZonePalette,
+} from "#lib/horizon/render.js";
 import { sampleAtmosphereGrid, type AtmosphereSample } from "#lib/horizon/atmosphere.js";
+import { forEachBrailleDot } from "#lib/horizon/braille.js";
+import { horizonRow } from "#lib/horizon/frame.js";
 import { computeWorldParams } from "#lib/horizon/world.js";
 import type { WorldParams } from "#lib/horizon/types.js";
 
@@ -108,13 +117,18 @@ function resizeCanvas() {
 
 let atmosphereTime = -Infinity;
 let atmosphereGrid: AtmosphereSample[] = [];
-let bgTile: OffscreenCanvas | null = null;
-let bgTileCtx: OffscreenCanvasRenderingContext2D | null = null;
+let skyTile: OffscreenCanvas | null = null;
+let seaTile: OffscreenCanvas | null = null;
+
+function tile(current: OffscreenCanvas | null, width: number, height: number): OffscreenCanvas {
+  return current && current.width === width && current.height === height
+    ? current
+    : new OffscreenCanvas(width, height);
+}
 
 /**
- * Paint the dithered scene wash: rendered at one pixel per character cell,
- * then scaled up without smoothing so the background shares the glyphs'
- * chunky grid resolution instead of a smooth gradient.
+ * Paint the scene wash: rendered at one pixel per character cell and scaled up
+ * smoothly. Sky and sea are separate tiles so filtering never blurs the horizon.
  */
 function paintBackground(
   ctx: OffscreenCanvasRenderingContext2D,
@@ -123,18 +137,54 @@ function paintBackground(
   palette: ZonePalette,
   world: WorldParams,
   weatherParams: WeatherParams,
+  skyParams: SkyParams,
 ) {
-  if (!bgTile || bgTile.width !== config.width || bgTile.height !== config.height) {
-    bgTile = new OffscreenCanvas(config.width, config.height);
-    bgTileCtx = bgTile.getContext("2d");
+  const seaTop = horizonRow(config);
+  const pixels = new ImageData(
+    renderBackgroundPixels(config, palette, world, weatherParams, atmosphereGrid, skyParams),
+    config.width,
+    config.height,
+  );
+  skyTile = tile(skyTile, config.width, seaTop);
+  seaTile = tile(seaTile, config.width, config.height - seaTop);
+  skyTile.getContext("2d")?.putImageData(pixels, 0, 0);
+  seaTile.getContext("2d")?.putImageData(pixels, 0, -seaTop);
+
+  const horizonY = seaTop * metrics.lineHeightPx;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(skyTile, 0, 0, metrics.cssWidth, horizonY);
+  ctx.drawImage(seaTile, 0, horizonY, metrics.cssWidth, metrics.cssHeight - horizonY);
+}
+
+const DISC_ZONES = new Set<AsciiCell["zone"]>(["sun-core", "sun", "moon-core", "moon"]);
+
+/**
+ * Draw a run of braille as dots at their exact sub-cell positions. Braille comes
+ * from whatever system font has it, with its own spacing; drawing the dots keeps
+ * the sun and moon round on every platform.
+ */
+function drawDots(
+  ctx: OffscreenCanvasRenderingContext2D,
+  chars: string,
+  x: number,
+  y: number,
+  metrics: MonoMetrics,
+) {
+  const pitchX = metrics.charWidth / 2;
+  const pitchY = metrics.lineHeightPx / 4;
+  const radius = Math.min(pitchX, pitchY) * 0.36;
+  ctx.beginPath();
+  for (let i = 0; i < chars.length; i++) {
+    const left = x + i * metrics.charWidth;
+    forEachBrailleDot(chars[i], (dx, dy) => {
+      const cx = left + (dx + 0.5) * pitchX;
+      const cy = y + (dy + 0.5) * pitchY;
+      ctx.moveTo(cx + radius, cy);
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    });
   }
-  if (!bgTileCtx) return;
-
-  const pixels = renderBackgroundPixels(config, palette, world, weatherParams, atmosphereGrid);
-  bgTileCtx.putImageData(new ImageData(pixels, config.width, config.height), 0, 0);
-
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(bgTile, 0, 0, metrics.cssWidth, metrics.cssHeight);
+  ctx.fill();
 }
 
 function render() {
@@ -174,9 +224,19 @@ function render() {
     atmosphereGrid,
   );
   const runs = encodeRuns(grid);
+  const colors = sceneColors(state.palette, world);
+  const gain = toneGain(state.palette);
   const { ctx } = state;
 
-  paintBackground(ctx, state.metrics, state.config, state.palette, world, state.weatherParams);
+  paintBackground(
+    ctx,
+    state.metrics,
+    state.config,
+    state.palette,
+    world,
+    state.weatherParams,
+    state.skyParams,
+  );
   ctx.font = state.metrics.font;
   ctx.textBaseline = "top";
 
@@ -185,17 +245,26 @@ function render() {
     const y = rowIndex * state.metrics.lineHeightPx;
 
     for (const run of runs[rowIndex]) {
-      ctx.fillStyle = state.palette[run.zone];
+      const advance = run.chars.length * state.metrics.charWidth;
+      // Only blank cells carry the sky zone; the wash already paints them.
+      if (run.zone === "sky") {
+        x += advance;
+        continue;
+      }
+      ctx.fillStyle = colors[run.zone];
 
       if (run.zone === "star") {
-        const phase = (performance.now() / 1000 + (run.twinkleDelay ?? 0)) * (Math.PI / 2);
-        ctx.globalAlpha = state.active ? 0.65 + 0.35 * ((Math.sin(phase) + 1) / 2) : 0.8;
+        // A slow breath, staggered per star; held still while paused.
+        const phase = (performance.now() / 1000 + (run.twinkleDelay ?? 0)) * (Math.PI / 3);
+        const breath = state.active ? 0.7 + 0.3 * ((Math.sin(phase) + 1) / 2) : 0.85;
+        ctx.globalAlpha = Math.min(1, run.tone * gain * breath);
       } else {
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = Math.min(1, run.tone * gain);
       }
 
-      ctx.fillText(run.chars, x, y);
-      x += run.chars.length * state.metrics.charWidth;
+      if (DISC_ZONES.has(run.zone)) drawDots(ctx, run.chars, x, y, state.metrics);
+      else ctx.fillText(run.chars, x, y);
+      x += advance;
     }
   }
 

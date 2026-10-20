@@ -9,7 +9,12 @@
     type WeatherParams,
     type WeatherSource,
   } from "#lib/horizon/index.js";
-  import { fetchLosAngelesWeather, type LosAngelesWeather } from "#lib/horizon/weather.js";
+  import {
+    cacheLosAngelesWeather,
+    fetchLosAngelesWeather,
+    readCachedLosAngelesWeather,
+    type LosAngelesWeather,
+  } from "#lib/horizon/weather.js";
   import AsciiHorizonWorkerCanvas from "./AsciiHorizonWorkerCanvas.svelte";
   import MotionControl from "./MotionControl.svelte";
   import WaveControls from "./WaveControls.svelte";
@@ -30,38 +35,9 @@
   let weatherParams: WeatherParams = $state({ ...DEFAULT_WEATHER_PARAMS });
   let weatherSource: WeatherSource = $state("loading");
 
-  const WEATHER_CACHE_KEY = "ascii-horizon-la-weather-v1";
-  const WEATHER_CACHE_MAX_AGE = 6 * 60 * 60 * 1000;
   const WEATHER_REFRESH_INTERVAL = 15 * 60 * 1000;
   let liveWeatherEnabled = true;
   let weatherController: AbortController | null = null;
-
-  function hasFiniteWeather(params: unknown): params is WeatherParams {
-    if (!params || typeof params !== "object") return false;
-    const weather = params as Record<string, unknown>;
-    return ["windSpeed", "windDirection", "cloudCover", "humidity", "precipitation"].every(
-      (key) => typeof weather[key] === "number" && Number.isFinite(weather[key]),
-    );
-  }
-
-  function readCachedWeather(): LosAngelesWeather | null {
-    try {
-      const cached = JSON.parse(
-        localStorage.getItem(WEATHER_CACHE_KEY) ?? "null",
-      ) as LosAngelesWeather | null;
-      if (
-        !cached ||
-        typeof cached.fetchedAt !== "number" ||
-        Date.now() - cached.fetchedAt > WEATHER_CACHE_MAX_AGE ||
-        !hasFiniteWeather(cached.params)
-      ) {
-        return null;
-      }
-      return cached;
-    } catch {
-      return null;
-    }
-  }
 
   function applyWeather(weather: LosAngelesWeather, source: WeatherSource) {
     weatherParams = { ...weather.params };
@@ -80,11 +56,7 @@
       const weather = await fetchLosAngelesWeather(controller.signal);
       if (!liveWeatherEnabled || controller.signal.aborted) return;
       applyWeather(weather, "live");
-      try {
-        localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(weather));
-      } catch {
-        // Storage is an optional resilience layer; the live model still applies.
-      }
+      cacheLosAngelesWeather(weather);
     } catch {
       if (!liveWeatherEnabled || weatherController !== controller) return;
       weatherSource = weatherSource === "cached" ? "cached" : "fallback";
@@ -108,7 +80,7 @@
   }
 
   onMount(() => {
-    const cached = readCachedWeather();
+    const cached = readCachedLosAngelesWeather();
     if (cached) {
       applyWeather(cached, "cached");
     }
@@ -131,8 +103,6 @@
     <AsciiHorizonWorkerCanvas {waveParams} {skyParams} {weatherParams} {paused} />
   </div>
 
-  <MotionControl bind:paused {reducedMotion} />
-
   <WaveControls
     bind:params={waveParams}
     bind:skyParams
@@ -140,21 +110,23 @@
     {weatherSource}
     onRequestLiveWeather={useLiveWeather}
     onManualWeather={useManualWeather}
-  />
+  >
+    <MotionControl bind:paused {reducedMotion} />
+  </WaveControls>
 </div>
 
 <style>
   .ascii-horizon-stack {
     display: grid;
-    gap: 0.85rem;
+    gap: 0.35rem;
     margin-bottom: 2rem;
   }
 
+  /* The painted scene runs edge to edge; the card is only its frame. */
   .horizon-card {
     background: var(--color-horizon-bg);
     border: 1px solid var(--color-theme-border);
     border-radius: 0.75rem;
-    padding: 1.5rem 1rem;
     overflow: hidden;
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
     transition: background-color 0.25s;
