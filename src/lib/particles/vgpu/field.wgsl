@@ -28,13 +28,11 @@ struct Field {
   rain: f32,
   /** Unit vector the surface wind blows toward, in the view's xz plane. */
   wind: vec2f,
-  /** Half the frame's width and height, in screen heights. */
-  frame: vec2f,
-  /** Vertical field of view in radians. */
-  fov: f32,
   windLean: f32,
-  /** Height of the horizon above the frame's center, in screen heights. */
-  horizon: f32,
+  /** The unswayed view the flow is measured in: tan(fov / 2), pitch, and eye height. */
+  halfTan: f32,
+  pitch: f32,
+  eyeHeight: f32,
 }
 @group(0) @binding(0) var<storage, read> grains: array<Grain>;
 @group(0) @binding(1) var<storage, read_write> state: array<vec4f>;
@@ -181,9 +179,8 @@ fn shadeSun(grain: Grain) -> Shaded {
   let limb = 1.0 - 0.55 * (1.0 - sqrt(1.0 - min(r2, 1.0)));
   let clear = 1.0 - smoothstep(0.15, 0.85, seen.cloud);
   let disc = table(LUT_SUN_GROUND) * SUN_RADIANCE * limb * clear;
-  // Sparks leave the rim; the core mostly holds.
-  let activity = 0.2 + 0.8 * smoothstep(0.55, 1.0, r2);
-  return Shaded(field.camera + dir * BODY_RADIUS, seen.color + disc, activity, step(0.0, dir.y));
+  // The sun holds still: near the horizon the flow runs along it, which would shear the disc.
+  return Shaded(field.camera + dir * BODY_RADIUS, seen.color + disc, 0.0, step(0.0, dir.y));
 }
 
 fn shadeMoon(grain: Grain) -> Shaded {
@@ -197,7 +194,7 @@ fn shadeMoon(grain: Grain) -> Shaded {
   let seen = skyAt(dir, 4);
   let clear = 1.0 - smoothstep(0.15, 0.85, seen.cloud);
   let disc = table(LUT_MOON_GROUND) * MOON_RADIANCE * maria * (light + 0.012) * clear;
-  return Shaded(field.camera + dir * BODY_RADIUS, seen.color + disc, 0.3, step(0.0, dir.y));
+  return Shaded(field.camera + dir * BODY_RADIUS, seen.color + disc, 0.0, step(0.0, dir.y));
 }
 
 fn shadeStar(grain: Grain) -> Shaded {
@@ -319,25 +316,32 @@ fn easing(e0: f32, e1: f32, x: f32) -> vec2f {
   return vec2f(t * t * (3.0 - 2.0 * t), 6.0 * t * (1.0 - t) / (e1 - e0));
 }
 
+// Where a direction lands in the unswayed view, in screen heights from the frame's center.
+fn screen(dir: vec3f) -> vec2f {
+  let c = cos(field.pitch);
+  let s = sin(field.pitch);
+  let depth = max(dir.y * s - dir.z * c, 1e-3);
+  return vec2f(dir.x, dir.y * c + dir.z * s) / depth * (0.5 / field.halfTan);
+}
+
 // Flow velocity at a point in screen heights, before scaling: the curl of a stream function that
 // is noise times a gate. The gate opens where a slower noise is high and closes on the horizon,
 // which makes the horizon a streamline: grains slide along it but never cross, so sky and sea
-// stay separate. Wherever the gate is open the flow also leans downwind.
+// stay separate. Wind adds a sideways shear that also vanishes on the horizon. Both terms are
+// free of divergence, so grains born evenly stay evenly spread.
 fn velocity(p: vec2f, slow: f32) -> vec2f {
   // A broad, gently ramped gate: a steep one would turn each open region's rim into a jet that
   // traces its outline.
   let opening = simplexGrad(vec3f(p * 1.6, slow));
   let swirl = simplexGrad(vec3f(p * 3.5, slow * 1.3 + 11.0));
   let open = easing(field.flowInfluence - 0.3, field.flowInfluence + 0.6, opening.w);
-  let distance = p.y - field.horizon;
+  let distance = p.y - screen(vec3f(0.0, 0.0, -1.0)).y;
   // Wide enough to keep the sun, its path and the far sea's fine bands legible.
   let wall = easing(0.0, 0.22, abs(distance));
   let gate = open.x * wall.x;
   let gateSlope = open.y * opening.xy * 1.6 * wall.x + vec2f(0.0, open.x * wall.y * sign(distance));
   let slope = gateSlope * swirl.w + gate * swirl.xy * 3.5;
-  var flow = vec2f(slope.y, -slope.x) * 0.25;
-  flow *= min(1.0, 2.0 / max(length(flow), 1e-4));
-  return flow + vec2f(field.wind.x, 0.15) * field.windLean * gate;
+  return vec2f(slope.y, -slope.x) * 0.25 + vec2f(field.wind.x * field.windLean * wall.x, 0.0);
 }
 
 @compute @workgroup_size(64)
@@ -375,7 +379,9 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
   // One field for the whole scene, so whatever leaves a patch of sky or sea is replaced by
   // whatever flows in behind it.
   let slow = field.time * 0.2;
-  let home = grain.attributes.zw * field.frame;
+  // Sea grains are placed from their rest point, the rest from where they are drawn.
+  let rest = select(shaded.position - field.camera, grain.reference.xyz - vec3f(0.0, field.eyeHeight, 0.0), kind == KIND_OCEAN);
+  let home = screen(rest);
   let pace = field.delta * shaded.activity * field.flowStrength;
   // A midpoint step: a plain Euler step lands outside every circle it follows, so grains would
   // spiral out of each vortex and leave its eye empty.
@@ -388,7 +394,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
   let ahead = toward / reach;
   let right = normalize(cross(ahead, vec3f(0.0, 1.0, 0.0)));
   let up = cross(right, ahead);
-  let moved = shaded.position + (right * offset.x + up * offset.y) * reach * field.fov;
+  let moved = shaded.position + (right * offset.x + up * offset.y) * reach * 2.0 * field.halfTan;
   // Grains swell over half their life and fade over the last quarter, close to the original's
   // envelope but with a short hold, so the surfaces stay fine-grained.
   let grow = min(smoothstep(0.0, 0.45, life), 1.0 - smoothstep(0.75, 1.0, life));

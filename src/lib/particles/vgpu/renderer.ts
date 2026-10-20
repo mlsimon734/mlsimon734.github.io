@@ -252,11 +252,9 @@ export async function createOceanVgpu(
             waveCount: MAX_WAVES,
             rain: weather.precipitation,
             wind,
-            frame: [0.5 * camera.aspect, 0.5],
-            fov: view.fov,
-            // Grains keep their layout's screen coordinates, so the horizon sits where the
-            // unswayed view puts it.
-            horizon: (0.5 * Math.tan(-view.pitch)) / Math.tan(view.fov / 2),
+            halfTan: Math.tan(view.fov / 2),
+            pitch: view.pitch,
+            eyeHeight: view.eyeHeight,
           },
         });
         field.dispatch(Math.ceil(count / 64));
