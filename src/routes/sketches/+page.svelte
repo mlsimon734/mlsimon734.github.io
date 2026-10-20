@@ -18,6 +18,12 @@
       aside: "WebGPU",
     },
     {
+      name: "Neon Wood",
+      href: "/sketches/neon-forest",
+      desc: "A path through a wood at night, strung with lights, as a million drifting grains: a procedural forest, lit once from its lamps, coming loose in slow swirls of curl noise.",
+      aside: "WebGPU",
+    },
+    {
       name: "Ascii Horizon",
       href: "/",
       desc: "The animated sunset on the home page: a mathematically generated ASCII ocean rendered off the main thread with OffscreenCanvas, driven by LA local time and lunar phase.",

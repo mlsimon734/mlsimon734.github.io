@@ -1,4 +1,4 @@
-// Shared by the sky and field passes; the renderer prepends it to each.
+// Shared by the sky and field passes, and by the forest's flow; each renderer prepends it.
 const PI = 3.14159265;
 const KIND_SKY = 0.0;
 const KIND_SUN = 1.0;
