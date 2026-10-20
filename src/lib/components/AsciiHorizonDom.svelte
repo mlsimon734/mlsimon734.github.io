@@ -56,13 +56,13 @@
   const config = $derived(isDesktop ? DESKTOP_CONFIG : MOBILE_CONFIG);
   const shouldAnimate = $derived(!paused && !reducedMotion && inViewport && pageVisible);
   const world = $derived(computeWorldParams(now, waterTime, skyParams));
-  // The clouds open where this wind would have carried them by now, and a new wind
-  // turns them where they stand. Steering along an unchanged wind changes nothing.
-  let drift = untrack(() => startDrift(weatherParams, (Date.now() / 1000) * waveParams.speed));
-  const atmosphereGrid = $derived.by(() => {
-    drift = steerDrift(drift, weatherParams, waterTime);
-    return sampleAtmosphereGrid(config, waterTime, weatherParams, drift);
+  let drift = $state.raw(untrack(() => startDrift(weatherParams, waveParams.speed)));
+  // A new wind turns the clouds from where they stand instead of jumping them.
+  $effect.pre(() => {
+    const wind = { ...weatherParams };
+    drift = untrack(() => steerDrift(drift, wind, waterTime));
   });
+  const atmosphereGrid = $derived(sampleAtmosphereGrid(config, waterTime, weatherParams, drift));
   const grid = $derived(
     generateHorizon(
       now,

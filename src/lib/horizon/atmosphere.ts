@@ -1,4 +1,4 @@
-import type { GridConfig, WeatherParams } from "./types";
+import { DEFAULT_WAVE_PARAMS, type GridConfig, type WeatherParams } from "./types";
 import { HORIZON, horizonRow } from "./frame";
 
 export interface AtmosphereSample {
@@ -78,11 +78,16 @@ function windVelocity(weather: WeatherParams): { vx: number; vy: number } {
 }
 
 /**
- * A drift along this wind that had already blown for `elapsed` seconds of scene time
- * at time zero. Seeding that from the wall clock gives every moment its own sky.
+ * Where this wind would have carried the clouds by now, had the scene run at `pace`
+ * scene seconds per wall-clock second since the epoch. Seeding from the clock gives
+ * every moment its own sky, and a reload continues it instead of restarting it.
  */
-export function startDrift(weather: WeatherParams, elapsed = 0): CloudDrift {
+export function startDrift(
+  weather: WeatherParams,
+  pace: number = DEFAULT_WAVE_PARAMS.speed,
+): CloudDrift {
   const { vx, vy } = windVelocity(weather);
+  const elapsed = (Date.now() / 1000) * pace;
   return { x: vx * elapsed, y: vy * elapsed, vx, vy };
 }
 

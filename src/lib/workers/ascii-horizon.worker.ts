@@ -135,6 +135,11 @@ function resizeCanvas() {
   state.ctx.textBaseline = "top";
 }
 
+// Clouds move slowly; they are sampled at steps of scene time and held between frames.
+function cloudTime(waterTime: number): number {
+  return Math.floor(waterTime * 12) / 12;
+}
+
 let atmosphereTime = -Infinity;
 let atmosphereGrid: AtmosphereSample[] = [];
 let skyTile: OffscreenCanvas | null = null;
@@ -225,8 +230,7 @@ function render() {
   const waterTime = getWaterTime(performance.now());
   const now = Date.now();
   const world = computeWorldParams(now, waterTime, state.skyParams);
-  // Clouds move slowly; hold their samples between water frames.
-  const nextAtmosphereTime = Math.floor(waterTime * 12) / 12;
+  const nextAtmosphereTime = cloudTime(waterTime);
   if (nextAtmosphereTime !== atmosphereTime) {
     atmosphereTime = nextAtmosphereTime;
     atmosphereGrid = sampleAtmosphereGrid(
@@ -308,11 +312,10 @@ function syncState(message: SyncMessage) {
   state.weatherParams = message.weatherParams;
   state.reducedMotion = message.reducedMotion;
   state.waterTime = state.reducedMotion ? 0 : currentWaterTime;
-  // The clouds open where this wind would have carried them by now, so each visit
-  // continues one sky instead of restarting it; a new wind turns them where they stand.
+  // A new wind turns the clouds from where they are drawn instead of jumping them.
   state.drift = state.drift
-    ? steerDrift(state.drift, message.weatherParams, state.waterTime)
-    : startDrift(message.weatherParams, (Date.now() / 1000) * message.waveParams.speed);
+    ? steerDrift(state.drift, message.weatherParams, cloudTime(state.waterTime))
+    : startDrift(message.weatherParams, message.waveParams.speed);
 
   if (message.active && !state.reducedMotion) {
     const speed = Math.max(message.waveParams.speed, 0.001);
