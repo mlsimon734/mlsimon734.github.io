@@ -1,278 +1,274 @@
 import type { WaveParams, WeatherParams } from "./types";
-import { DEFAULT_WAVE_PARAMS, DEFAULT_WEATHER_PARAMS } from "./types";
+import { smoothstep } from "./atmosphere";
 
-export interface OceanSample {
-  height: number;
-  slopeX: number;
-  slopeY: number;
-  crest: number;
-  /** Fine ripple field, 0–1 centred on 0.5 — drives ambient glitter and micro-texture. */
-  glitter: number;
-  /** Wind-coupled breaking probability, 0–1 — drives coherent foam and spray. */
-  foam: number;
-}
+/**
+ * The sea is a plane seen from a fixed height. A row `s` frame-heights below the
+ * horizon looks down at a depression angle whose sine is 2s (mirroring the sky's
+ * sin-elevation projection in world.ts), so depth grows as 1 / tan(depression) and
+ * one wave field recedes continuously to the horizon. Components whose phase moves
+ * faster than a cell can show are faded out; their slope variance becomes the
+ * unresolved micro-facet roughness that spreads the sun and moon into glitter.
+ */
 
-interface ReflectionMetrics {
-  columnMask: number;
-  verticalFade: number;
-  specular: number;
-  glint: number;
-  reflectScore: number;
-}
+/** Frame width in units of depth: a ~90° horizontal field of view. */
+const LATERAL_SPAN = 2;
 
-interface OceanComponent {
+interface WaveComponent {
+  /** Wavenumber in radians per camera height. */
   k: number;
+  /** Height amplitude in camera heights. */
   amplitude: number;
-  speed: number;
-  dirX: number;
-  dirY: number;
+  /** Travel direction in degrees; 0 runs straight toward the viewer. */
+  angle: number;
   phase: number;
 }
 
 const TAU = Math.PI * 2;
-const REFLECTION_SLOPE_WEIGHT_X = 1.35;
-const REFLECTION_SLOPE_WEIGHT_Y = 0.85;
-const REFLECTION_TARGET_TILT = 0.1;
 
-function component(
-  k: number,
-  amplitude: number,
-  speed: number,
-  angleDegrees: number,
-  phase: number,
-): OceanComponent {
-  const radians = (angleDegrees * Math.PI) / 180;
+function wave(wavelength: number, amplitude: number, angle: number, phase: number): WaveComponent {
+  return { k: TAU / wavelength, amplitude, angle, phase };
+}
+
+// Long Pacific swell, wind chop, and a capillary ripple layer. Each band is scaled by
+// its control below; the ripple is almost always unresolved and mostly feeds roughness.
+const SWELL: readonly WaveComponent[] = [
+  wave(11, 0.1, -8, 0.2),
+  wave(7.5, 0.07, 21, 1.3),
+  wave(14, 0.08, -33, 2.1),
+];
+const CHOP: readonly WaveComponent[] = [
+  wave(2.2, 0.03, 35, 0.7),
+  wave(1.5, 0.024, -44, 1.9),
+  wave(1.0, 0.017, 61, 2.8),
+  wave(0.7, 0.012, -68, 4.0),
+  wave(0.5, 0.008, 18, 5.1),
+];
+const RIPPLE: readonly WaveComponent[] = [wave(0.32, 0.004, 72, 0.4), wave(0.22, 0.0028, -79, 3.4)];
+
+const GRAVITY = 9.81 / 6; // camera height ≈ 6 m
+
+export interface SeaView {
+  /** Distance below the horizon in frame heights. */
+  s: number;
+  depression: number;
+  depth: number;
+  /** Depth change per character row, for the anti-alias filter. */
+  depthPerRow: number;
+  /** Depth change per character column at the frame center. */
+  lateralPerColumn: number;
+}
+
+export function seaView(s: number, width: number, height: number): SeaView {
+  const sinD = Math.min(0.98, Math.max(0.004, 2 * s));
+  const depression = Math.asin(sinD);
+  const cosD = Math.cos(depression);
+  const depth = cosD / sinD;
   return {
-    k,
-    amplitude,
-    speed,
-    dirX: Math.cos(radians),
-    dirY: Math.sin(radians),
-    phase,
+    s,
+    depression,
+    depth,
+    depthPerRow: 2 / (sinD * sinD * cosD * height),
+    lateralPerColumn: (LATERAL_SPAN * depth) / width,
   };
 }
 
-const SWELL_COMPONENTS: readonly OceanComponent[] = [
-  component(1.6, 1.0, 0.42, 82, 0.2),
-  component(2.4, 0.58, 0.58, 97, 1.3),
-  component(3.5, 0.34, 0.74, 70, 2.1),
-];
-
-const CHOP_COMPONENTS: readonly OceanComponent[] = [
-  component(6.5, 0.2, 1.05, 76, 0.7),
-  component(9.0, 0.16, 1.22, 104, 1.9),
-  component(12.5, 0.11, 1.46, 64, 2.8),
-  component(16.0, 0.08, 1.72, 116, 4.0),
-];
-
-// High-frequency fast ripple: sampled with a *linear* perspective map so rows
-// near the horizon keep distinct phases (the swell/chop perspective curve
-// compresses them into one phase, which is what left the far field static).
-const RIPPLE_COMPONENTS: readonly OceanComponent[] = [
-  component(21.0, 0.55, 2.1, 84, 0.4),
-  component(27.0, 0.4, 2.7, 66, 3.4),
-  component(34.0, 0.3, 3.2, 112, 1.6),
-];
-
-const SWELL_TOTAL = SWELL_COMPONENTS.reduce((sum, wave) => sum + wave.amplitude, 0);
-const CHOP_TOTAL = CHOP_COMPONENTS.reduce((sum, wave) => sum + wave.amplitude, 0);
-const RIPPLE_TOTAL = RIPPLE_COMPONENTS.reduce((sum, wave) => sum + wave.amplitude, 0);
-
-// Height range that maps onto the crest sigmoid; without it tanh saturates
-// into flat ±1 patches and the mid-tone glyphs never appear.
-const CREST_RANGE = 14;
-// How strongly ripple micro-facets perturb the reflection slopes.
-// Keep small: too much breaks specular alignment and starves the sun column.
-const RIPPLE_SLOPE_SCALE = 1.2;
-
-function derivativeVPerspective(v: number): number {
-  if (v <= 0) return 0;
-  return 0.82 * 1.35 * Math.pow(v, 0.35);
+/** Horizontal view angle of a frame position, relative to straight ahead. */
+export function viewAzimuth(u: number): number {
+  return Math.atan((u - 0.5) * LATERAL_SPAN);
 }
 
-function derivativeChopEnvelope(v: number): number {
-  if (v <= 0) return 0;
-  return 1.2 * Math.pow(v, 0.2);
+export interface SeaSample {
+  /** Combined surface height with sharpened crests, about −1…1. */
+  crest: number;
+  /** Long swell height, −1…1; 0 where the swell has blurred into sheen. */
+  swell: number;
+  /** Wind chop and ripple height, −1…1; 0 where it has blurred into sheen. */
+  chop: number;
+  /** Share of the chop this cell can resolve. */
+  chopResolved: number;
+  /** Resolved facet slope across (x) and along (z) the line of sight. */
+  slopeX: number;
+  slopeZ: number;
+  /** Unresolved per-axis slope deviation that the glitter model spreads light over. */
+  roughX: number;
+  roughZ: number;
+  /** Wind-driven breaking, 0–1. */
+  foam: number;
 }
 
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value));
+/** Cox–Munk sea-surface slope variance per axis for a wind speed in m/s. */
+export function slopeVariance(windSpeed: number): number {
+  return (0.003 + 0.00512 * Math.max(0, windSpeed)) / 2;
 }
 
-function smoothstep(edge0: number, edge1: number, value: number): number {
-  const t = clamp01((value - edge0) / Math.max(edge1 - edge0, 0.0001));
-  return t * t * (3 - 2 * t);
-}
-
-function sigmaForWater(waterT: number, sunElevation: number, windRoughness: number): number {
-  const lowSunFactor = 1 - clamp01((sunElevation + 0.1) / 1.1);
-  const roughnessSpread = 0.78 + 0.62 * windRoughness;
-  return 0.016 + (0.085 + 0.035 * lowSunFactor) * roughnessSpread * Math.pow(waterT, 0.88);
-}
-
-function verticalFadeForWater(waterT: number, sunElevation: number): number {
-  const highSunFactor = clamp01((sunElevation + 0.15) / 1.15);
-  return Math.exp(-waterT * (0.72 + 0.78 * highSunFactor));
-}
-
-function sampleBand(
-  components: readonly OceanComponent[],
-  u: number,
-  vPerspective: number,
-  timeSeconds: number,
-  rotation: number,
-  speedScale: number,
-): { sum: number; slopeX: number; slopeY: number } {
-  let sum = 0;
-  let slopeX = 0;
-  let slopeY = 0;
-  const rotCos = Math.cos(rotation);
-  const rotSin = Math.sin(rotation);
-
-  for (const wave of components) {
-    const dirX = wave.dirX * rotCos - wave.dirY * rotSin;
-    const dirY = wave.dirX * rotSin + wave.dirY * rotCos;
-    const theta =
-      TAU * wave.k * (dirX * u + dirY * vPerspective) -
-      wave.speed * speedScale * timeSeconds +
-      wave.phase;
-    const sinTheta = Math.sin(theta);
-    const cosTheta = Math.cos(theta);
-    const common = TAU * wave.k * wave.amplitude * cosTheta;
-
-    sum += wave.amplitude * sinTheta;
-    slopeX += common * dirX;
-    slopeY += common * dirY;
-  }
-
-  return { sum, slopeX, slopeY };
+function windEnergy(weather: WeatherParams): number {
+  return Math.max(0, Math.min(1, (weather.windSpeed - 1.5) / 16));
 }
 
 /**
- * Sample the directional ocean field at a sub-pixel coordinate.
- *
- * The returned `height` is the raw band-combined height field. Use `crest`
- * for displayed wave modulation and `slopeX` / `slopeY` for reflection logic.
+ * Sample the wave field under a character cell. `u` is the column position (0–1)
+ * and `view` the row's projection from `seaView`.
  */
-export function sampleOceanSurface(
-  x: number,
-  waterT: number,
+export function sampleSea(
+  u: number,
+  view: SeaView,
   timeSeconds: number,
-  width: number,
-  height: number,
-  waveParams: WaveParams = DEFAULT_WAVE_PARAMS,
-  weatherParams: WeatherParams = DEFAULT_WEATHER_PARAMS,
-): OceanSample {
-  const { swellScale, chopScale, crestSharpness } = waveParams;
-  const shimmer = waveParams.shimmer ?? 1;
-  const u = width > 0 ? x / width : 0;
-  const v = Math.max(0, Math.min(1, waterT));
-  const vPerspective = 0.18 + 0.82 * Math.pow(v, 1.35);
-  const vChop = Math.pow(v, 1.2);
-  const vCrest = Math.pow(v, 1.1);
-  const vRipple = 0.06 + 0.94 * v;
-  const rippleEnvelope = 0.4 + 0.6 * v;
-  const windEnergy = clamp01((weatherParams.windSpeed - 1.5) / 16);
-  const directionDelta = (((weatherParams.windDirection - 252 + 540) % 360) - 180) * 0.45;
-  const windRotation = (directionDelta * Math.PI) / 180;
-  const speedScale = 0.72 + 0.56 * windEnergy;
-  const swell = sampleBand(
-    SWELL_COMPONENTS,
-    u,
-    vPerspective,
-    timeSeconds,
-    windRotation * 0.35,
-    0.86 + 0.14 * speedScale,
-  );
-  const chop = sampleBand(CHOP_COMPONENTS, u, vPerspective, timeSeconds, windRotation, speedScale);
-  const ripple = sampleBand(
-    RIPPLE_COMPONENTS,
-    u,
-    vRipple,
-    timeSeconds,
-    windRotation * 1.2,
-    speedScale * 1.16,
-  );
-  const swellSum = swell.sum / SWELL_TOTAL;
-  const chopSum = chop.sum / CHOP_TOTAL;
-  const rippleSum = ripple.sum / RIPPLE_TOTAL;
-  const dvPerspective = derivativeVPerspective(v);
-  const dvChop = derivativeChopEnvelope(v);
-  const gust =
-    0.88 +
-    0.08 * Math.sin(TAU * (u * 1.7 + v * 0.35) - timeSeconds * 0.24) +
-    0.04 * Math.sin(TAU * (u * 4.1 - v * 0.8) - timeSeconds * 0.51);
-  const chopEnergy = (0.56 + 0.62 * windEnergy) * gust;
-  const rippleScale =
-    RIPPLE_SLOPE_SCALE * shimmer * rippleEnvelope * (0.45 + 0.9 * windEnergy) * gust;
+  waveParams: WaveParams,
+  weather: WeatherParams,
+): SeaSample {
+  const energy = windEnergy(weather);
+  const variance = slopeVariance(weather.windSpeed);
+  // Weather headings rotate the chop fully and the long swell only slightly.
+  const heading = ((((weather.windDirection - 252 + 540) % 360) - 180) * 0.45 * Math.PI) / 180;
+  const x = (u - 0.5) * LATERAL_SPAN * view.depth;
+  const z = view.depth;
+  const swellGain = waveParams.swellScale / 24;
+  const chopGain = (waveParams.chopScale / 14) * (0.45 + 1.1 * energy);
+  const rippleGain = waveParams.shimmer * (0.5 + energy);
 
-  const heightRaw = swellScale * swellSum + chopScale * chopEnergy * vChop * chopSum;
-  const slopeXRaw =
-    swellScale * (swell.slopeX / SWELL_TOTAL) +
-    chopScale * chopEnergy * vChop * (chop.slopeX / CHOP_TOTAL) +
-    rippleScale * (ripple.slopeX / RIPPLE_TOTAL);
-  const slopeYRaw =
-    swellScale * (swell.slopeY / SWELL_TOTAL) * dvPerspective +
-    chopScale *
-      chopEnergy *
-      (dvChop * chopSum + vChop * (chop.slopeY / CHOP_TOTAL) * dvPerspective) +
-    rippleScale * (ripple.slopeY / RIPPLE_TOTAL) * 0.94;
+  let slopeX = 0;
+  let slopeZ = 0;
+  let resolvedX = 0;
+  let resolvedZ = 0;
 
-  // Convert from normalised-coordinate derivatives into screen-space-ish slopes.
-  const slopeX = slopeXRaw / Math.max(width, 1);
-  const slopeY = slopeYRaw / Math.max(height * 0.35, 1);
-  const crest = Math.tanh(
-    heightRaw / CREST_RANGE +
-      crestSharpness * vCrest * chopSum +
-      0.15 * shimmer * rippleSum * rippleEnvelope,
-  );
-  const glitter = clamp01(0.5 + 0.5 * shimmer * rippleSum * rippleEnvelope);
-  const screenSteepness = Math.sqrt(slopeX * slopeX + slopeY * slopeY);
-  const breakingCrest = smoothstep(0.62 - 0.1 * windEnergy, 0.94, crest);
-  const breakingSlope = smoothstep(0.18, 0.52 - 0.08 * windEnergy, screenSteepness);
-  const foamTexture = 0.62 + 0.38 * Math.sin(TAU * (u * 11.3 + v * 4.2) - timeSeconds * 1.7);
-  const foam = clamp01(breakingCrest * breakingSlope * (0.24 + 0.78 * windEnergy) * foamTexture);
+  /** Sums one band; returns its height relative to the band's full amplitude and its resolved share. */
+  const band = (components: readonly WaveComponent[], gain: number, turn: number) => {
+    let height = 0;
+    let total = 0;
+    let kept = 0;
+    for (const c of components) {
+      const amplitude = c.amplitude * gain;
+      const angle = (c.angle * Math.PI) / 180 + heading * turn;
+      const dirX = Math.sin(angle);
+      // Waves run toward the viewer, so phase advances as depth decreases.
+      const dirZ = -Math.cos(angle);
+      const columnRate = c.k * Math.abs(dirX) * view.lateralPerColumn;
+      const rowRate = c.k * Math.abs(dirZ) * view.depthPerRow;
+      // Fade a component before it aliases across columns, where it would read as
+      // noise. Rows may sample it sparsely (each becomes its own line of waves), but
+      // once a row spans many wavelengths it averages into sheen.
+      const resolve = (1 - smoothstep(0.7, 1.7, columnRate)) * (1 - smoothstep(8, 20, rowRate));
+      total += amplitude;
+      if (resolve <= 0) continue;
+
+      const omega = Math.sqrt(GRAVITY * c.k);
+      const theta = c.k * (dirX * x + dirZ * z) - omega * timeSeconds + c.phase;
+      const a = amplitude * resolve;
+      kept += a;
+      height += a * Math.sin(theta);
+      const slope = a * c.k * Math.cos(theta);
+      slopeX += slope * dirX;
+      slopeZ += slope * dirZ;
+      const slopeAmplitude = a * c.k;
+      resolvedX += (slopeAmplitude * slopeAmplitude * dirX * dirX) / 2;
+      resolvedZ += (slopeAmplitude * slopeAmplitude * dirZ * dirZ) / 2;
+    }
+    const scale = Math.max(total, 1e-6);
+    // A sum of sines rarely nears its full amplitude; 2× spreads it over −1…1.
+    return { height: Math.max(-1, Math.min(1, (2 * height) / scale)), resolved: kept / scale };
+  };
+
+  const swell = band(SWELL, swellGain, 0.35);
+  const chop = band(CHOP, chopGain, 1);
+  const ripple = band(RIPPLE, rippleGain, 1.2);
+  const chopHeight = 0.8 * chop.height + 0.2 * ripple.height;
+
+  // Sharpen crests and flatten troughs, as real gravity waves do.
+  const lifted = (0.5 * swell.height + 0.5 * chopHeight + 1) / 2;
+  const crest = 2 * Math.pow(lifted, waveParams.crestSharpness) - 1;
+
+  // Capillary ripples never fully resolve, so some roughness always remains; a
+  // sharper reflection setting leaves less of it and crisper sparkles.
+  const floor = (variance * 0.72) / Math.max(waveParams.reflectionSharpness, 0.5);
+  const roughX = Math.sqrt(Math.max(floor, variance - resolvedX));
+  const roughZ = Math.sqrt(Math.max(floor, variance - resolvedZ));
+
+  const steepness = Math.hypot(slopeX, slopeZ) / Math.sqrt(variance * 2);
+  const breaking = smoothstep(0.5 - 0.15 * energy, 0.95, crest) * smoothstep(0.4, 1.2, steepness);
+  const foam = breaking * smoothstep(0.35, 0.85, energy);
 
   return {
-    height: heightRaw,
-    slopeX,
-    slopeY,
     crest,
-    glitter,
+    swell: swell.height,
+    chop: chopHeight,
+    chopResolved: chop.resolved,
+    slopeX,
+    slopeZ,
+    roughX,
+    roughZ,
     foam,
   };
 }
 
-export function computeReflectionMetrics(
-  x: number,
-  waterT: number,
-  sunCenterX: number,
-  sunElevation: number,
-  width: number,
-  sample: Pick<OceanSample, "slopeX" | "slopeY">,
-  waveParams: WaveParams = DEFAULT_WAVE_PARAMS,
-  weatherParams: WeatherParams = DEFAULT_WEATHER_PARAMS,
-): ReflectionMetrics {
-  const dxNorm = (x - sunCenterX) / width;
-  const windRoughness = clamp01((weatherParams.windSpeed - 1.5) / 16);
-  const sigma = sigmaForWater(waterT, sunElevation, windRoughness);
-  const columnMask = Math.exp(-(dxNorm * dxNorm) / (2 * sigma * sigma));
-  const verticalFade = verticalFadeForWater(waterT, sunElevation);
-  const facetAlignment = Math.max(
-    0,
-    1 -
-      REFLECTION_SLOPE_WEIGHT_X * Math.abs(sample.slopeX) -
-      REFLECTION_SLOPE_WEIGHT_Y * Math.abs(sample.slopeY - REFLECTION_TARGET_TILT),
-  );
-  const specular = Math.pow(facetAlignment, waveParams.reflectionSharpness);
-  const glint = 0.12 + 0.88 * specular;
-  const reflectScore = columnMask * verticalFade * glint;
+export interface LightSource {
+  /** Frame x of the body, 0–1. */
+  x: number;
+  /** Elevation angle in radians. */
+  elevation: number;
+}
 
+interface GlintGeometry {
+  /** Facet tilt needed across the line of sight to reflect the body into the eye. */
+  needX: number;
+  /** Facet tilt needed along the line of sight. */
+  needZ: number;
+}
+
+function glintGeometry(u: number, view: SeaView, light: LightSource): GlintGeometry {
+  // A facet tilted by t along the view lifts the reflected ray by 2t; tilted across
+  // it, the ray swings in azimuth by 2t·tan(depression). Near the horizon the path
+  // therefore narrows to a line and widens toward the viewer.
+  const azimuth = viewAzimuth(light.x) - viewAzimuth(u);
   return {
-    columnMask,
-    verticalFade,
-    specular,
-    glint,
-    reflectScore,
+    needX: azimuth / (2 * Math.tan(Math.max(view.depression, 0.004))),
+    needZ: (view.depression - light.elevation) / 2,
   };
+}
+
+/** Mean glitter brightness with every facet unresolved: the path's smooth body, 0–1. */
+export function expectedGlint(
+  u: number,
+  view: SeaView,
+  light: LightSource,
+  windSpeed: number,
+): number {
+  return pathBody(glintGeometry(u, view, light), slopeVariance(windSpeed));
+}
+
+function pathBody({ needX, needZ }: GlintGeometry, variance: number): number {
+  return Math.exp(-(needX * needX + needZ * needZ) / (2 * variance));
+}
+
+/** Share of the path's mean brightness every cell keeps, sparkle or not. */
+const PATH_FLOOR = 0.4;
+
+/**
+ * Glitter from one cell. Resolved facets that already lean the right way catch the
+ * light as bright sparkles; elsewhere the unresolved roughness gives the cell its
+ * share. Sparkles ride on part of the path's mean brightness, so even glassy water
+ * keeps a coherent column under the body.
+ */
+export function glint(
+  u: number,
+  view: SeaView,
+  light: LightSource,
+  sample: SeaSample,
+  windSpeed: number,
+): number {
+  const geometry = glintGeometry(u, view, light);
+  const variance = slopeVariance(windSpeed);
+  const dx = geometry.needX + sample.slopeX;
+  const dz = geometry.needZ + sample.slopeZ;
+  const sparkle =
+    (variance / (sample.roughX * sample.roughZ)) *
+    Math.exp(
+      -(dx * dx) / (2 * sample.roughX * sample.roughX) -
+        (dz * dz) / (2 * sample.roughZ * sample.roughZ),
+    );
+  return Math.max(sparkle, PATH_FLOOR * pathBody(geometry, variance));
+}
+
+/** Schlick's Fresnel term for skylight reflected at a grazing depression angle. */
+export function skyReflectance(view: SeaView): number {
+  return 0.02 + 0.98 * Math.pow(1 - Math.sin(view.depression), 5);
 }

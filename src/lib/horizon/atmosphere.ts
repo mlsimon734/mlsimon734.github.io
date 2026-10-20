@@ -1,4 +1,5 @@
-import type { WeatherParams } from "./types";
+import type { GridConfig, WorldParams, WeatherParams } from "./types";
+import { HORIZON, horizonRow } from "./frame";
 
 export interface AtmosphereSample {
   cloud: number;
@@ -14,18 +15,20 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-function smoothstep(edge0: number, edge1: number, value: number): number {
+/** Hermite ease from 0 at edge0 to 1 at edge1; edges must ascend. */
+export function smoothstep(edge0: number, edge1: number, value: number): number {
   const t = clamp01((value - edge0) / Math.max(edge1 - edge0, 0.0001));
   return t * t * (3 - 2 * t);
 }
 
-function hash2(x: number, y: number, seed: number): number {
+/** Stable value in [0, 1] per lattice point. */
+export function hash2(x: number, y: number, seed: number): number {
   let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 69069);
   h = (h ^ (h >>> 13)) * 1274126177;
   return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
 }
 
-function valueNoise(x: number, y: number, seed: number): number {
+export function valueNoise(x: number, y: number, seed: number): number {
   const ix = Math.floor(x);
   const iy = Math.floor(y);
   const fx = x - ix;
@@ -71,7 +74,7 @@ export function sampleAtmosphere(
   weather: WeatherParams,
   daySeed: number,
 ): AtmosphereSample {
-  const horizon = height * 0.65;
+  const horizon = height * HORIZON;
   const skyT = clamp01(y / Math.max(horizon, 1));
   const cover = clamp01(weather.cloudCover);
   const humidity = clamp01(weather.humidity);
@@ -120,4 +123,29 @@ export function rainGlyph(windDirection: number, x: number, y: number): string {
 
 export function weatherPulse(x: number, y: number, timeSeconds: number): number {
   return 0.5 + 0.5 * Math.sin(TAU * (x * 0.019 + y * 0.037) - timeSeconds * 0.7);
+}
+
+/** One cell-resolution atmosphere field, shared by glyphs and painted background. */
+export function sampleAtmosphereGrid(
+  config: GridConfig,
+  world: Pick<WorldParams, "waterTime" | "dayOfYear">,
+  weather: WeatherParams,
+): AtmosphereSample[] {
+  const samples: AtmosphereSample[] = [];
+  for (let y = 0; y < horizonRow(config); y++) {
+    for (let x = 0; x < config.width; x++) {
+      samples.push(
+        sampleAtmosphere(
+          x + 0.5,
+          y + 0.5,
+          world.waterTime,
+          config.width,
+          config.height,
+          weather,
+          world.dayOfYear,
+        ),
+      );
+    }
+  }
+  return samples;
 }

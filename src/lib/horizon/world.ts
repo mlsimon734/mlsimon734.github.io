@@ -164,6 +164,7 @@ export function computeWorldParams(
     moonX: moon.x,
     moonY: moon.y,
     moonElevation: moon.elevation,
+    moonAzimuth: (moon.azimuth * 180) / Math.PI,
     moonVisibility,
     nightFactor,
     moonPhase,

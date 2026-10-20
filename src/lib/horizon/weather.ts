@@ -97,3 +97,42 @@ export async function fetchLosAngelesWeather(signal?: AbortSignal): Promise<LosA
 
   return mapOpenMeteoWeather((await response.json()) as OpenMeteoResponse);
 }
+
+// Shared by every ocean view so one fetch serves the whole site for a while.
+const WEATHER_CACHE_KEY = "ascii-horizon-la-weather-v1";
+const WEATHER_CACHE_MAX_AGE = 6 * 60 * 60 * 1000;
+
+function hasFiniteWeather(params: unknown): params is WeatherParams {
+  if (!params || typeof params !== "object") return false;
+  const weather = params as Record<string, unknown>;
+  return ["windSpeed", "windDirection", "cloudCover", "humidity", "precipitation"].every(
+    (key) => typeof weather[key] === "number" && Number.isFinite(weather[key]),
+  );
+}
+
+export function readCachedLosAngelesWeather(): LosAngelesWeather | null {
+  try {
+    const cached = JSON.parse(
+      localStorage.getItem(WEATHER_CACHE_KEY) ?? "null",
+    ) as LosAngelesWeather | null;
+    if (
+      !cached ||
+      typeof cached.fetchedAt !== "number" ||
+      Date.now() - cached.fetchedAt > WEATHER_CACHE_MAX_AGE ||
+      !hasFiniteWeather(cached.params)
+    ) {
+      return null;
+    }
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+export function cacheLosAngelesWeather(weather: LosAngelesWeather): void {
+  try {
+    localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(weather));
+  } catch {
+    // Storage is an optional resilience layer; the live model still applies.
+  }
+}

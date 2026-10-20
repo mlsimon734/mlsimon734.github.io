@@ -29,9 +29,16 @@
     {
       name: "AsciiHorizon (this site)",
       href: "https://github.com/mlsimon734/mlsimon734.github.io",
-      desc: "A real-time animated ASCII sunset rendered on an OffscreenCanvas worker, with a DOM renderer as fallback. Wave equations driven by LA local time and live weather, dithered into Braille and ASCII zones. The personality glue holding the rest of this site together.",
+      desc: "A real-time animated ASCII sunset rendered on an OffscreenCanvas worker, with a DOM renderer as fallback. Waves, sun glitter, moon phase and stars driven by LA local time and live weather. The personality glue holding the rest of this site together.",
       stack: ["Svelte 5", "TypeScript", "Canvas", "Web Workers"],
       period: "2025 –",
+    },
+    {
+      name: "Last Light",
+      href: "/sketches/ocean-sunset",
+      desc: "Santa Monica Bay at the current minute, rebuilt as a million GPU particles in the manner of three-ml-sharp: single-scattering sky, Gerstner waves with Cox–Munk sun glitter, and clouds, wind and haze from live LA weather.",
+      stack: ["Svelte 5", "WebGPU", "WGSL", "vgpu"],
+      period: "2026",
     },
   ];
 </script>
@@ -51,7 +58,12 @@
     <ul class="space-y-2">
       {#each projects as p}
         <li>
-          <a href={p.href} target="_blank" rel="noopener noreferrer" class="work-link">
+          <a
+            href={p.href}
+            target={p.href.startsWith("/") ? undefined : "_blank"}
+            rel={p.href.startsWith("/") ? undefined : "noopener noreferrer"}
+            class="work-link"
+          >
             <span class="work-name">
               {p.name}
               <ArrowUpRight size={18} class="work-arrow" />

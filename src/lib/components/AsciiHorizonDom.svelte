@@ -9,9 +9,17 @@
     type SkyParams,
     type WeatherParams,
   } from "#lib/horizon/index.js";
+  import { sampleAtmosphereGrid } from "#lib/horizon/atmosphere.js";
   import { computeWorldParams } from "#lib/horizon/world.js";
   import { renderBackgroundPixels } from "#lib/horizon/background.js";
-  import { encodeRuns, resolveZonePalette } from "#lib/horizon/render.js";
+  import { horizonRow } from "#lib/horizon/frame.js";
+  import {
+    encodeRuns,
+    resolveZonePalette,
+    sceneColors,
+    toneGain,
+    type ZonePalette,
+  } from "#lib/horizon/render.js";
 
   const TARGET_FPS = 12;
   const FRAME_INTERVAL_MS = 1000 / TARGET_FPS;
@@ -20,10 +28,12 @@
     waveParams,
     skyParams,
     weatherParams,
+    paused = false,
   }: {
     waveParams: WaveParams;
     skyParams: SkyParams;
     weatherParams: WeatherParams;
+    paused?: boolean;
   } = $props();
 
   let container: HTMLDivElement | undefined = $state();
@@ -32,7 +42,9 @@
   let naturalH = $state(0);
   let containerW = $state(0);
   let themeVersion = $state(0);
-  let bgUrl = $state("");
+  let palette: ZonePalette | null = $state(null);
+  let skyCanvas: HTMLCanvasElement | undefined = $state();
+  let seaCanvas: HTMLCanvasElement | undefined = $state();
   let isDesktop = $state(false);
   let reducedMotion = $state(false);
   let inViewport = $state(true);
@@ -41,22 +53,36 @@
   let now = $state(Date.now());
 
   const config = $derived(isDesktop ? DESKTOP_CONFIG : MOBILE_CONFIG);
-  const shouldAnimate = $derived(!reducedMotion && inViewport && pageVisible);
-  const grid = $derived(
-    generateHorizon(now, config, waterTime, waveParams, skyParams, weatherParams),
-  );
-  const spans = $derived(
-    encodeRuns(grid) as { chars: string; zone: AsciiCell["zone"]; twinkleDelay?: number }[][],
-  );
+  const shouldAnimate = $derived(!paused && !reducedMotion && inViewport && pageVisible);
   const world = $derived(computeWorldParams(now, waterTime, skyParams));
+  const atmosphereGrid = $derived(sampleAtmosphereGrid(config, world, weatherParams));
+  const grid = $derived(
+    generateHorizon(
+      now,
+      config,
+      waterTime,
+      waveParams,
+      skyParams,
+      weatherParams,
+      world,
+      atmosphereGrid,
+    ),
+  );
+  const spans = $derived(encodeRuns(grid));
+  const colors = $derived(palette ? sceneColors(palette, world) : null);
+  const gain = $derived(palette ? toneGain(palette) : 1);
+  const seaTop = $derived(horizonRow(config));
   // Scale the fixed-font art block down to the container so narrow cards see
   // the whole scene (matching the canvas renderers) instead of clipping it.
   const scale = $derived(naturalW > 0 && containerW > 0 ? Math.min(1, containerW / naturalW) : 1);
-  const bgStyle = $derived(
-    bgUrl
-      ? `background-image: url(${bgUrl}); background-size: 100% 100%; image-rendering: pixelated;`
-      : "",
-  );
+  // Tone rides in the color's alpha so the stars' breathing opacity multiplies it,
+  // as the worker does, instead of replacing it.
+  function runStyle(run: { zone: AsciiCell["zone"]; tone: number; twinkleDelay?: number }) {
+    if (!colors) return "";
+    const alpha = Math.round(Math.min(1, run.tone * gain) * 100);
+    const delay = run.twinkleDelay != null ? `animation-delay:${run.twinkleDelay}s;` : "";
+    return `color:color-mix(in srgb, ${colors[run.zone]} ${alpha}%, transparent);${delay}`;
+  }
 
   $effect(() => {
     const mql = window.matchMedia("(min-width: 640px)");
@@ -132,21 +158,22 @@
     return () => observer.disconnect();
   });
 
-  // Dithered scene wash rendered at one pixel per character cell, scaled up
-  // with pixelated rendering so the background shares the glyph grid.
   $effect(() => {
     void themeVersion;
-    if (!container) return;
+    if (container) palette = resolveZonePalette(getComputedStyle(container));
+  });
 
-    const palette = resolveZonePalette(getComputedStyle(container));
-    const pixels = renderBackgroundPixels(config, palette, world, weatherParams);
-    const tile = document.createElement("canvas");
-    tile.width = config.width;
-    tile.height = config.height;
-    const ctx = tile.getContext("2d");
-    if (!ctx) return;
-    ctx.putImageData(new ImageData(pixels, config.width, config.height), 0, 0);
-    bgUrl = tile.toDataURL();
+  // The scene wash, one pixel per character cell; CSS scales the canvases up smoothly.
+  $effect(() => {
+    if (!palette || !skyCanvas || !seaCanvas) return;
+
+    const image = new ImageData(
+      renderBackgroundPixels(config, palette, world, weatherParams, atmosphereGrid, skyParams),
+      config.width,
+      config.height,
+    );
+    skyCanvas.getContext("2d")?.putImageData(image, 0, 0);
+    seaCanvas.getContext("2d")?.putImageData(image, 0, -seaTop);
   });
 
   $effect(() => {
@@ -190,12 +217,25 @@
     class="scale-box"
     style={naturalW > 0 ? `width:${naturalW * scale}px;height:${naturalH * scale}px;` : undefined}
   >
-    <div bind:this={artBlock} class="art-block" style={`${bgStyle}transform:scale(${scale});`}>
+    <div bind:this={artBlock} class="art-block" style={`transform:scale(${scale});`}>
+      <!-- Sky and sea are separate layers so smooth scaling never blurs the horizon. -->
+      <canvas
+        bind:this={skyCanvas}
+        class="wash"
+        width={config.width}
+        height={seaTop}
+        style={`top:0;height:${(seaTop / config.height) * 100}%;`}
+      ></canvas>
+      <canvas
+        bind:this={seaCanvas}
+        class="wash"
+        width={config.width}
+        height={config.height - seaTop}
+        style={`bottom:0;height:${(1 - seaTop / config.height) * 100}%;`}
+      ></canvas>
       {#each spans as row}
         <p>
-          {#each row as run}<span
-              class={run.zone}
-              style={run.twinkleDelay != null ? `animation-delay: ${run.twinkleDelay}s` : undefined}
+          {#each row as run}<span class:star={run.zone === "star"} style={runStyle(run)}
               >{run.chars}</span
             >{/each}
         </p>
@@ -218,6 +258,7 @@
   }
 
   .art-block {
+    position: relative;
     display: inline-block;
     text-align: left;
     white-space: pre;
@@ -225,88 +266,24 @@
     transform-origin: top left;
   }
 
+  .wash {
+    position: absolute;
+    left: 0;
+    z-index: -1;
+    width: 100%;
+  }
+
   .star {
-    color: var(--color-horizon-star);
     animation: var(--animate-glow);
-  }
-
-  .sky {
-    color: var(--color-horizon-sky);
-  }
-
-  .sky-glow {
-    color: var(--color-horizon-sky-glow);
-  }
-
-  .cloud-light {
-    color: var(--color-horizon-cloud-light);
-  }
-
-  .cloud-shadow {
-    color: var(--color-horizon-cloud-shadow);
-  }
-
-  .rain {
-    color: var(--color-horizon-rain);
-  }
-
-  .spray {
-    color: var(--color-horizon-spray);
-  }
-
-  .sun-core {
-    color: var(--color-horizon-sun-core);
-  }
-
-  .sun {
-    color: var(--color-horizon-sun);
-  }
-
-  .moon-core {
-    color: var(--color-horizon-moon-core);
-  }
-
-  .moon {
-    color: var(--color-horizon-moon);
-  }
-
-  .horizon {
-    color: var(--color-horizon-horizon);
-  }
-
-  .water {
-    color: var(--color-horizon-water);
-  }
-
-  .water-reflect {
-    color: var(--color-horizon-water-reflect);
-  }
-
-  .water-reflect-warm {
-    color: var(--color-horizon-water-reflect-warm);
-  }
-
-  .water-reflect-cool {
-    color: var(--color-horizon-water-reflect-cool);
-  }
-
-  .foam {
-    color: var(--color-horizon-foam);
-  }
-
-  .water-far {
-    color: var(--color-horizon-water-far);
   }
 
   .motion-paused .star {
     animation: none;
-    opacity: 0.8;
   }
 
   @media (prefers-reduced-motion: reduce) {
     .star {
       animation: none;
-      opacity: 0.8;
     }
   }
 </style>

@@ -10,6 +10,8 @@ export interface WorldParams {
   moonX: number;
   moonY: number;
   moonElevation: number;
+  /** Degrees clockwise from north, like `solarAzimuth`. */
+  moonAzimuth: number;
   moonVisibility: number;
   /** Continuous daylight-to-night blend used by the atmosphere. */
   nightFactor: number;
@@ -29,7 +31,6 @@ export interface AsciiCell {
   zone:
     | "star"
     | "sky"
-    | "sky-glow"
     | "cloud-light"
     | "cloud-shadow"
     | "rain"
@@ -38,13 +39,13 @@ export interface AsciiCell {
     | "sun"
     | "moon-core"
     | "moon"
-    | "horizon"
     | "water"
     | "water-reflect"
     | "water-reflect-warm"
     | "water-reflect-cool"
-    | "foam"
-    | "water-far";
+    | "foam";
+  /** Glyph opacity, quantised to TONE_LEVELS steps so runs stay long. Defaults to 1. */
+  tone?: number;
   twinkleDelay?: number;
 }
 
@@ -75,7 +76,7 @@ export interface SkyParams {
 export const DEFAULT_SKY_PARAMS: SkyParams = {
   timeOffset: 0,
   glowStrength: 1.0,
-  sunRadius: 4.0,
+  sunRadius: 3.4,
 };
 
 export interface WeatherParams {
@@ -99,29 +100,17 @@ export const DEFAULT_WEATHER_PARAMS: WeatherParams = {
 export interface GridConfig {
   width: number;
   height: number;
-  subWidth: number;
-  subHeight: number;
   maxStars: number;
-  ditherThreshold: number;
-  ditherBleed: number;
 }
 
 export const DESKTOP_CONFIG: GridConfig = {
   width: 120,
   height: 36,
-  subWidth: 240,
-  subHeight: 144,
-  maxStars: 20,
-  ditherThreshold: 0.6,
-  ditherBleed: 0.75,
+  maxStars: 26,
 };
 
 export const MOBILE_CONFIG: GridConfig = {
   width: 60,
   height: 18,
-  subWidth: 120,
-  subHeight: 72,
-  maxStars: 10,
-  ditherThreshold: 0.6,
-  ditherBleed: 0.75,
+  maxStars: 12,
 };

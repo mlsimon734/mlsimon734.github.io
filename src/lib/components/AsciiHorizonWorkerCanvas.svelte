@@ -19,10 +19,12 @@
     waveParams,
     skyParams,
     weatherParams,
+    paused = false,
   }: {
     waveParams: WaveParams;
     skyParams: SkyParams;
     weatherParams: WeatherParams;
+    paused?: boolean;
   } = $props();
 
   let canvas: HTMLCanvasElement | undefined = $state();
@@ -39,7 +41,7 @@
   let worker: Worker | null = null;
 
   const config = $derived(isDesktop ? DESKTOP_CONFIG : MOBILE_CONFIG);
-  const shouldAnimate = $derived(!reducedMotion && inViewport && pageVisible);
+  const shouldAnimate = $derived(!paused && !reducedMotion && inViewport && pageVisible);
 
   function measureCharWidth(font: string): number {
     const probe = document.createElement("canvas");
@@ -54,11 +56,12 @@
 
   async function refreshPresentation() {
     if (!canvas || !container) return;
+    const measuredConfig = config;
     await document.fonts.ready;
     if (!canvas || !container) return;
 
     const nextMetrics = createMonoMetrics(
-      config,
+      measuredConfig,
       measureCharWidth('11px "JetBrains Mono", ui-monospace, monospace'),
     );
     // Resolve from the container so the theme-scoped .horizon-scene palette applies
@@ -67,7 +70,8 @@
     metrics = nextMetrics;
     palette = nextPalette;
     canvas.style.width = `${nextMetrics.cssWidth}px`;
-    canvas.style.height = `${nextMetrics.cssHeight}px`;
+    canvas.style.height = "auto";
+    canvas.style.aspectRatio = `${nextMetrics.cssWidth} / ${nextMetrics.cssHeight}`;
   }
 
   onMount(() => {
@@ -206,7 +210,7 @@
 {:else}
   <div class="fallback-note">
     <p>OffscreenCanvas isn&apos;t available here, so this mode falls back to the DOM renderer.</p>
-    <AsciiHorizonDom {waveParams} {skyParams} {weatherParams} />
+    <AsciiHorizonDom {waveParams} {skyParams} {weatherParams} {paused} />
   </div>
 {/if}
 
