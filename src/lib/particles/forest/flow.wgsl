@@ -80,6 +80,8 @@ fn cs_main(@builtin(global_invocation_id) id: vec3u) {
     let grow = select(age, 0.5, point.color.w == EMISSIVE);
     size = flow.pixelSize * point.position.w * grow * pow(depth / REFERENCE_DEPTH, -SIZE_POWER);
   }
-  let fade = exp(-length(position - flow.camera) / FOG_DISTANCE);
+  // Lights cut through the haze, and their glow in it is the bloom's to draw.
+  let fog = select(1.0, 0.4, point.color.w == EMISSIVE);
+  let fade = exp(-length(position - flow.camera) * fog / FOG_DISTANCE);
   lit[index] = Lit(vec4f(position, size), vec4f(mix(FOG, point.color.rgb, fade), 1.0));
 }

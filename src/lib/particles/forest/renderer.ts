@@ -133,6 +133,8 @@ export async function createForestVgpu(
       const layout = buildLayout(count, view);
       density = layout.density;
       pointBuffer.write(layout.points);
+      // New homes: every grain starts its life over, with no offset carried from the old one.
+      stateBuffer.write(initialState);
       bake.set({ bake: { eye: EYE, count, ambient: AMBIENT, lightCount } });
       bake.dispatch(Math.ceil(count / 64));
     };
@@ -175,7 +177,7 @@ export async function createForestVgpu(
         time += delta;
         // The source demo's rig, scaled down for a path in a wood: a slow dolly on the same
         // 12.6 s cycle, a slight roll, and damped parallax that follows the pointer.
-        const damping = delta > 0 ? 1 - Math.exp(-2 * delta) : 1;
+        const damping = 1 - Math.exp(-2 * delta);
         look.x += (pointer[0] * 0.55 - look.x) * damping;
         look.y += (-pointer[1] * 0.2 - look.y) * damping;
         const dolly = 0.6 * Math.sin(time * 0.5);

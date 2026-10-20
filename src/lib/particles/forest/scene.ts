@@ -82,7 +82,13 @@ const PATH_HALF_WIDTH = 1.05;
 const DOOR = { z: -38, width: 1.1, height: 2.2 };
 const DOOR_X = pathX(DOOR.z) + 0.2;
 
-/** Everything in the scene, before it becomes points. Seeded, so the layout and lights agree. */
+let arranged: ReturnType<typeof arrange> | undefined;
+/** Everything in the scene, before it becomes points; seeded, so it is worked out once. */
+function scene() {
+  arranged ??= arrange();
+  return arranged;
+}
+
 function arrange() {
   const random = mulberry32(11);
   const trunks: Trunk[] = [];
@@ -186,7 +192,7 @@ const SCONCE_LIGHT: Vec3 = [0.9, 0.5, 0.18];
 /** The lights the bake sums: every bulb, the doorway as a small grid facing up the path, and the
  * lamp over it. */
 export function buildLights(): Float32Array<ArrayBuffer> {
-  const { strands } = arrange();
+  const { strands } = scene();
   const lights: number[] = [];
   for (const strand of strands) {
     for (const bulb of bulbsOf(strand)) lights.push(...bulb, 0.12, ...BULB_LIGHT, 0);
@@ -217,8 +223,14 @@ interface Patch {
   area: number;
   material: Material;
   activity: number;
-  /** One uniform point on the patch; `material` overrides the patch's where it changes inside. */
-  sample: (random: () => number) => { p: Vec3; n: Vec3; albedo: Vec3; material?: Material };
+  /** One uniform point on the patch; it overrides the patch's material where that changes inside. */
+  sample: (random: () => number) => {
+    p: Vec3;
+    n: Vec3;
+    albedo: Vec3;
+    material?: Material;
+    activity?: number;
+  };
 }
 
 /**
@@ -229,7 +241,7 @@ interface Patch {
  */
 export function buildLayout(count: number, view: View): Layout {
   const random = mulberry32(5);
-  const { trunks, strands, clumps } = arrange();
+  const { trunks, strands, clumps } = scene();
   const camera = basis(view);
   const patches: Patch[] = [];
   const add = (patch: Patch) => {
@@ -268,14 +280,22 @@ export function buildLayout(count: number, view: View): Layout {
         sample: (r) => {
           const z = za - r() * step;
           const x = xa + r() * step;
+          if (Math.abs(x - pathX(z)) < PATH_HALF_WIDTH) {
+            return {
+              p: [x, 0, z],
+              n: [0, 1, 0],
+              albedo: vary([0.065, 0.066, 0.064], 0.5),
+              material: MATERIAL.wet,
+              activity: 0.35,
+            };
+          }
           const litter = 0.5 + r();
           return {
             p: [x, 0, z],
             n: [0, 1, 0],
-            albedo:
-              Math.abs(x - pathX(z)) < PATH_HALF_WIDTH
-                ? vary([0.065, 0.066, 0.064], 0.5)
-                : [0.04 * litter, 0.032 * litter, 0.024 * litter],
+            albedo: [0.04 * litter, 0.032 * litter, 0.024 * litter],
+            material: MATERIAL.rough,
+            activity: 0.7,
           };
         },
       });
@@ -442,12 +462,14 @@ export function buildLayout(count: number, view: View): Layout {
   });
 
   // The doorway: a low concrete wall at the end of the path, open onto a lit room.
-  const WALL = { width: 4.2, height: 3, cell: 0.3 };
+  // Cells a quarter of the door's width, laid from its edges, so none straddles the opening.
+  const WALL = { columns: 16, rows: 11, cell: DOOR.width / 4 };
   const wallColor: Vec3 = [0.17, 0.165, 0.155];
   const inDoor = (x: number, y: number) => Math.abs(x - DOOR_X) < DOOR.width / 2 && y < DOOR.height;
-  for (let x0 = DOOR_X - WALL.width / 2; x0 < DOOR_X + WALL.width / 2; x0 += WALL.cell) {
-    for (let y0 = 0; y0 < WALL.height; y0 += WALL.cell) {
-      const [xa, ya] = [x0, y0];
+  for (let i = 0; i < WALL.columns; i++) {
+    for (let j = 0; j < WALL.rows; j++) {
+      const xa = DOOR_X + (i - WALL.columns / 2) * WALL.cell;
+      const ya = j * WALL.cell;
       const open = inDoor(xa + WALL.cell / 2, ya + WALL.cell / 2);
       add({
         center: [xa + WALL.cell / 2, ya + WALL.cell / 2, open ? DOOR.z - 0.6 : DOOR.z],
@@ -506,29 +528,41 @@ export function buildLayout(count: number, view: View): Layout {
   const density = surfaces / total;
   const points = new Float32Array(count * POINT_FLOATS);
   let written = 0;
-  for (let k = 0; k < patches.length && written < surfaces; k++) {
+  const write = (
+    p: Vec3,
+    size: number,
+    n: Vec3,
+    activity: number,
+    albedo: Vec3,
+    material: number,
+  ) => {
+    const o = written * POINT_FLOATS;
+    points[o] = p[0];
+    points[o + 1] = p[1];
+    points[o + 2] = p[2];
+    points[o + 3] = size;
+    points[o + 4] = n[0];
+    points[o + 5] = n[1];
+    points[o + 6] = n[2];
+    points[o + 7] = activity;
+    points[o + 8] = albedo[0];
+    points[o + 9] = albedo[1];
+    points[o + 10] = albedo[2];
+    points[o + 11] = material;
+    written++;
+  };
+  // Each patch's fractional share carries into the next, so the total comes out exact.
+  let carry = random();
+  for (let k = 0; k < patches.length; k++) {
     const patch = patches[k];
-    const n = Math.floor(weights[k] * density + random());
+    carry += weights[k] * density;
+    const n = Math.floor(carry);
+    carry -= n;
     for (let i = 0; i < n && written < surfaces; i++) {
-      const { p, n: normal, albedo, material = patch.material } = patch.sample(random);
-      points.set(
-        [
-          p[0],
-          p[1],
-          p[2],
-          0.7 + random() * 0.6,
-          normal[0],
-          normal[1],
-          normal[2],
-          material === MATERIAL.emissive ? 0 : patch.activity,
-          albedo[0],
-          albedo[1],
-          albedo[2],
-          material,
-        ],
-        written * POINT_FLOATS,
-      );
-      written++;
+      const sample = patch.sample(random);
+      const material = sample.material ?? patch.material;
+      const activity = material === MATERIAL.emissive ? 0 : (sample.activity ?? patch.activity);
+      write(sample.p, 0.7 + random() * 0.6, sample.n, activity, sample.albedo, material);
     }
   }
 
@@ -556,11 +590,7 @@ export function buildLayout(count: number, view: View): Layout {
     const dz = doorway ? Math.abs(u) : u;
     const p: Vec3 = [at[0] + r * s * Math.cos(a), at[1] + r * s * Math.sin(a), at[2] + r * dz];
     if (p[1] < 0.1 || Math.abs(p[0] - pathX(p[2])) > 3.5) continue;
-    points.set(
-      [...p, 0.35 + random() * 0.25, 0, 1, 0, 1.6, 0.03, 0.03, 0.03, MATERIAL.mote],
-      written * POINT_FLOATS,
-    );
-    written++;
+    write(p, 0.35 + random() * 0.25, [0, 1, 0], 1.6, [0.03, 0.03, 0.03], MATERIAL.mote);
   }
   // Any shortfall stays zero-sized, and draws nothing.
   return { points, density };
