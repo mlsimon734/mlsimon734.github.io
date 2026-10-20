@@ -71,17 +71,17 @@
 <div class="layout-md text-lg">
   <h1 class="sr-only">Michael Simon</h1>
 
-  <header class="home-header" in:fly={{ y: 20, duration: 800, delay: 200 }}>
+  <header class="home-header" in:fly={{ y: 8, duration: 400, delay: 100 }}>
     <div class="home-header-text">
       <p class="home-tagline">
-        <span class="muted">is an</span> aspiring polymath,<span class="muted"> </span> <br />
+        Aspiring polymath<span class="muted">,</span> <br />
         researcher<span class="muted">,</span> engineer<span class="muted">,</span> <br />
         <span class="muted">and</span> builder<span class="muted">.</span>
       </p>
 
       <div class="home-bio mt-6 space-y-5">
         <p>
-          I'm an incoming (accidental) CS PhD student at
+          I'm an (accidental) CS PhD student at
           <OrgChip
             name="UCLA"
             href="https://www.cs.ucla.edu"
@@ -196,7 +196,7 @@
   -->
 
   <section class="horizon-section reveal" use:inview>
-    <div in:fly={{ y: 20, duration: 800, delay: 200 }}>
+    <div in:fly={{ y: 8, duration: 400, delay: 100 }}>
       <AsciiHorizon />
     </div>
   </section>

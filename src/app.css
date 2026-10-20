@@ -485,10 +485,10 @@ hr {
 @media (prefers-reduced-motion: no-preference) {
   .reveal {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(6px);
     transition:
-      opacity 0.8s var(--ease-contemplative),
-      transform 0.8s var(--ease-contemplative);
+      opacity 0.4s var(--ease-contemplative),
+      transform 0.4s var(--ease-contemplative);
   }
   .reveal.in-view {
     opacity: 1;

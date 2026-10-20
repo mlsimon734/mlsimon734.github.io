@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { slide } from "svelte/transition";
   import Seo from "#lib/components/Seo.svelte";
   import { inview } from "#lib/actions/inview.js";
 
@@ -9,7 +8,6 @@
     org: string;
     location?: string;
     bullets: string[];
-    defaultOpen?: boolean;
   };
 
   const education: Entry[] = [
@@ -43,7 +41,6 @@
       period: "2024–2026",
       role: "CTO & Co-founder",
       org: "Excavaite",
-      defaultOpen: true,
       bullets: [
         "Built terabyte-scale patent corpus with RaBitQ-indexed vector search.",
         "Designed agentic systems for patent leakage prevention, automated patent drafting, and claim-chart generation; instrumented automated evals to gate model and prompt changes.",
@@ -54,7 +51,6 @@
       period: "2023–2024",
       role: "Undergraduate Researcher",
       org: "VAIL Lab",
-      defaultOpen: true,
       bullets: [
         "Worked on diffusion models for synthetic driving-data generation, resulting in a NeurIPS 2024 publication.",
         "Created a unified terabyte-scale driving dataset by combining 4K YouTube driving footage with open-source datasets.",
@@ -183,8 +179,6 @@
     },
   ];
 
-  let expOpen = $state(experience.map((e) => !!e.defaultOpen));
-
   const service: Entry[] = [
     {
       period: "2026",
@@ -234,30 +228,19 @@
 
   <section class="reveal mt-16" use:inview>
     <h2 class="heading2">Experience</h2>
-    {#each experience as e, i}
+    {#each experience as e}
       <div class="cv-row">
         <span class="cv-period">{e.period}</span>
         <div class="cv-content">
-          <button
-            type="button"
-            class="exp-toggle"
-            aria-expanded={expOpen[i]}
-            aria-controls={`exp-bullets-${i}`}
-            onclick={() => (expOpen[i] = !expOpen[i])}
-          >
-            <span>
-              <span class="cv-role">{e.role}</span>
-              <span class="cv-org"> · {e.org}</span>
-            </span>
-            <span class="exp-toggle-icon" aria-hidden="true">{expOpen[i] ? "−" : "+"}</span>
-          </button>
-          {#if expOpen[i]}
-            <ul id={`exp-bullets-${i}`} transition:slide={{ duration: 180 }}>
-              {#each e.bullets as b}
-                <li>{b}</li>
-              {/each}
-            </ul>
-          {/if}
+          <div>
+            <span class="cv-role">{e.role}</span>
+            <span class="cv-org"> · {e.org}</span>
+          </div>
+          <ul>
+            {#each e.bullets as b}
+              <li>{b}</li>
+            {/each}
+          </ul>
         </div>
       </div>
     {/each}
@@ -358,41 +341,5 @@
 
   .pub-venue {
     color: var(--color-theme-subtle);
-  }
-
-  .exp-toggle {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    width: 100%;
-    background: none;
-    border: 0;
-    padding: 0;
-    font: inherit;
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .exp-toggle .cv-role {
-    text-decoration: underline;
-    text-decoration-color: transparent;
-    text-underline-offset: 3px;
-    transition: text-decoration-color 0.2s;
-  }
-
-  .exp-toggle:hover .cv-role,
-  .exp-toggle:focus-visible .cv-role {
-    text-decoration-color: var(--color-theme-accent);
-  }
-
-  .exp-toggle-icon {
-    color: var(--color-theme-subtle);
-    margin-left: 0.75rem;
-    transition: color 0.2s;
-  }
-
-  .exp-toggle:hover .exp-toggle-icon {
-    color: var(--color-theme-heading);
   }
 </style>
