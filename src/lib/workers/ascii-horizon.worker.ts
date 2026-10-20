@@ -78,6 +78,18 @@ const state: WorkerState = {
   timerId: null,
 };
 
+// Workers can't see the page's web fonts, so the glyphs load their own subset of
+// JetBrains Mono. Nothing draws until it settles, so the scene never changes typeface
+// in view; if it fails, the system monospace stands in.
+const glyphFont = new FontFace("JetBrains Mono", 'url("/fonts/jetbrains-mono-horizon.woff2")');
+self.fonts.add(glyphFont);
+let fontSettled = false;
+const settleFont = () => {
+  fontSettled = true;
+  render();
+};
+void glyphFont.load().then(settleFont, settleFont);
+
 function getWaterTime(now: number): number {
   if (state.reducedMotion) {
     return 0;
@@ -189,6 +201,7 @@ function drawDots(
 
 function render() {
   if (
+    !fontSettled ||
     !state.ctx ||
     !state.config ||
     !state.metrics ||
