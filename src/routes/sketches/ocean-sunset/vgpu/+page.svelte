@@ -4,40 +4,55 @@
 </script>
 
 <Seo
-  title="Ocean Sunset · Drifting Spray"
+  title="Last Light · Santa Monica Bay"
   path="/sketches/ocean-sunset/vgpu"
-  description="An experimental particle ocean: fine spray rises from the waves and settles into the last light."
+  description="The Pacific off Los Angeles at this moment, rebuilt from the position of the sun and today's weather as drifting points of light."
 />
 
 <div class="layout-md text-lg">
-  <section>
-    <h1 class="heading2">ocean sunset particles</h1>
-    <p class="lede">Fine spray rises from the waves and settles into the last light.</p>
-    <OceanSunsetVgpu />
-    <div class="study-notes">
-      <a href="/sketches/ocean-sunset" class="link">Compare with the original ocean</a>
-      <details>
-        <summary>About this study</summary>
-        <p>
-          This WebGPU prototype uses the same 180,000 particles on desktop and 90,000 on smaller
-          screens. A small cohort of sea particles carries velocity between frames, lifting from the
-          water and falling back under gravity. Turn off drifting spray to compare the surface
-          motion.
-        </p>
-        <p>
-          Built with <a href="https://github.com/vercel-labs/vgpu" class="link">vgpu</a>, with
-          depth-tested grains, a half-resolution bloom pass, and the original sunset palette. The
-          original ocean remains available for browsers without WebGPU.
-        </p>
-      </details>
-    </div>
-  </section>
+  <h1 class="heading2">last light</h1>
+  <p class="lede">
+    The bay off Santa Monica as it is right now, rebuilt from the sun, the moon, and today's
+    weather.
+  </p>
+</div>
+
+<div class="bleed">
+  <OceanSunsetVgpu />
+</div>
+
+<div class="layout-md study-notes">
+  <details>
+    <summary>How it works</summary>
+    <p>
+      You stand at the end of the pier, facing the point on the horizon where the sun sets today.
+      The sun and stars take their real positions over Los Angeles for this minute, the moon a close
+      approximation, and the sky is lit by single scattering through a modeled atmosphere, so the
+      colors of twilight come out of the arithmetic rather than a palette. Wind speed, wind
+      direction, cloud cover and humidity come from a live forecast and shape the waves, the clouds
+      and the haze.
+    </p>
+    <p>
+      The sea is a sum of travelling waves: a long westerly swell and a wind sea sized by the
+      Pierson–Moskowitz spectrum. Roughness too fine to draw follows Cox and Munk's measurements of
+      sunlit sea slopes, and each grain either catches the sun or doesn't, with a probability that
+      matches the expected glare. That is where the path of light comes from.
+    </p>
+    <p>
+      Every grain lives a few seconds, drifts on a slow noise field, and returns to its place, a
+      motion borrowed from
+      <a
+        href="https://github.com/cullenwebber/three-ml-sharp"
+        class="link"
+        target="_blank"
+        rel="noopener noreferrer">cullenwebber/three-ml-sharp</a
+      >. Built with <a href="https://github.com/vercel-labs/vgpu" class="link">vgpu</a> on WebGPU.
+    </p>
+  </details>
+  <a href="/sketches/ocean-sunset" class="link">The original particle ocean</a>
 </div>
 
 <style>
-  .layout-md {
-    max-width: 72rem;
-  }
   .heading2 {
     margin-bottom: 0.5rem;
   }
@@ -45,14 +60,21 @@
     color: var(--color-theme-muted);
     margin: 0 0 1.5rem;
     font-size: 1rem;
+    max-width: 52ch;
+  }
+  .bleed {
+    width: min(100%, 88rem);
+    margin: 0 auto;
+    padding: 0 clamp(0rem, 3vw, 2rem);
   }
   .study-notes {
-    margin-top: 1.5rem;
+    margin-top: 1.25rem;
     color: var(--color-theme-muted);
     font-size: 0.9rem;
-  }
-  details {
-    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
   summary {
     cursor: pointer;
@@ -67,5 +89,10 @@
   details p {
     max-width: 65ch;
     margin: 1rem 0;
+  }
+  @media (max-width: 639px) {
+    .bleed :global(figcaption) {
+      padding-inline: 1rem;
+    }
   }
 </style>
