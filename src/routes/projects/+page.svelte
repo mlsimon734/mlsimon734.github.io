@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowUpRight } from "lucide-svelte";
+  import { ArrowUpRight } from "@lucide/svelte";
   import Seo from "#lib/components/Seo.svelte";
   import { inview } from "#lib/actions/inview.js";
 
@@ -29,8 +29,8 @@
     {
       name: "AsciiHorizon (this site)",
       href: "https://github.com/mlsimon734/mlsimon734.github.io",
-      desc: "A real-time animated ASCII sunset rendered off the main thread with an OffscreenCanvas worker. Waves, sun glitter, moon phase and stars driven by LA local time and live weather. The personality glue holding the rest of this site together.",
-      stack: ["Svelte 5", "TypeScript", "Web Workers"],
+      desc: "A real-time animated ASCII sunset rendered on an OffscreenCanvas worker, with a DOM renderer as fallback. Waves, sun glitter, moon phase and stars driven by LA local time and live weather. The personality glue holding the rest of this site together.",
+      stack: ["Svelte 5", "TypeScript", "Canvas", "Web Workers"],
       period: "2025 –",
     },
     {

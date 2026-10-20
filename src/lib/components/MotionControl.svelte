@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Pause, Play } from "lucide-svelte";
+  import { Pause, Play } from "@lucide/svelte";
   let {
     paused = $bindable(false),
     reducedMotion = false,

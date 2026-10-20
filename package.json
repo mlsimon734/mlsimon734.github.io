@@ -6,13 +6,12 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --tsgo",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --tsgo --watch",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "ascii:convert": "scripts/convert-ascii.sh",
     "sync:resume": "bun scripts/sync-resume.ts"
   },
   "devDependencies": {
@@ -22,6 +21,7 @@
     "@tailwindcss/vite": "^4.0.0",
     "@types/node": "^26.0.0",
     "@types/three": "^0.186.0",
+    "@typescript/native": "npm:typescript@^7.0.0",
     "mdsvex": "^0.12.8",
     "oxlint": "^1.63.0",
     "prettier": "^3.8.3",
@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@icons-pack/svelte-simple-icons": "^7.2.0",
-    "lucide-svelte": "^1.0.0",
+    "@lucide/svelte": "^1.55.0",
     "three": "^0.186.0",
     "vgpu": "0.5.0"
   },
