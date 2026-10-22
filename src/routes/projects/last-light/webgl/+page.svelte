@@ -5,7 +5,7 @@
 
 <Seo
   title="Ocean Sunset Particles"
-  path="/sketches/ocean-sunset/webgl"
+  path="/projects/last-light/webgl"
   description="A particle study of sunset over the Pacific: a quiet sky and ribbons of light moving across the water."
 />
 

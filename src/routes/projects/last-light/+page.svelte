@@ -5,7 +5,7 @@
 
 <Seo
   title="Last Light · Santa Monica Bay"
-  path="/sketches/ocean-sunset"
+  path="/projects/last-light"
   description="The Pacific off Los Angeles at this moment, rebuilt from the position of the sun and today's weather as drifting points of light."
 />
 
@@ -52,7 +52,7 @@
       >. Built with <a href="https://github.com/vercel-labs/vgpu" class="link">vgpu</a> on WebGPU.
     </p>
   </details>
-  <a href="/sketches/ocean-sunset/webgl" class="link">The earlier WebGL version</a>
+  <a href="/projects/last-light/webgl" class="link">The earlier WebGL version</a>
 </div>
 
 <style>
