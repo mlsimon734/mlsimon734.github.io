@@ -16,13 +16,13 @@
   </div>
 
   <section class="error-block">
-    <p class="error-code font-mono text-base">// {page.status}</p>
-    <p class="error-line font-serif text-3xl">this shore is uncharted —</p>
+    <p class="error-code">{page.status}</p>
+    <p class="error-line font-serif text-3xl">This shore is uncharted.</p>
     <p class="error-detail text-warm-500 mt-3">
       {page.error?.message ?? "the page you were looking for slipped past the horizon."}
     </p>
     <p class="mt-8">
-      <a href="/" class="link">return home →</a>
+      <a href="/" class="link">Return home</a>
     </p>
   </section>
 </div>
@@ -40,7 +40,8 @@
   }
 
   .error-code {
-    color: var(--color-sunset-amber-500);
+    color: var(--color-theme-subtle);
+    font-variant-numeric: tabular-nums;
     margin-bottom: 0.5rem;
   }
 
@@ -49,7 +50,6 @@
   }
 
   .error-detail {
-    font-family: var(--font-mono);
-    font-size: 0.875rem;
+    font-size: 1rem;
   }
 </style>

@@ -16,7 +16,13 @@ import {
   type MonoMetrics,
   type ZonePalette,
 } from "#lib/horizon/render.js";
-import { sampleAtmosphereGrid, type AtmosphereSample } from "#lib/horizon/atmosphere.js";
+import {
+  sampleAtmosphereGrid,
+  startDrift,
+  steerDrift,
+  type AtmosphereSample,
+  type CloudDrift,
+} from "#lib/horizon/atmosphere.js";
 import { forEachBrailleDot } from "#lib/horizon/braille.js";
 import { horizonRow } from "#lib/horizon/frame.js";
 import { computeWorldParams } from "#lib/horizon/world.js";
@@ -54,6 +60,7 @@ interface WorkerState {
   waveParams: WaveParams | null;
   skyParams: SkyParams | null;
   weatherParams: WeatherParams | null;
+  drift: CloudDrift | null;
   waterTime: number;
   animationStart: number;
   timerId: number | null;
@@ -73,10 +80,25 @@ const state: WorkerState = {
   waveParams: null,
   skyParams: null,
   weatherParams: null,
+  drift: null,
   waterTime: 0,
   animationStart: 0,
   timerId: null,
 };
+
+// Workers can't see the page's web fonts, so the glyphs load their own subset of
+// JetBrains Mono. Nothing draws until it settles, so the scene never changes typeface
+// in view; if it fails, the system monospace stands in. The subset leaves out `~`:
+// JetBrains Mono's tall tilde reads as an "N" at this size, so the waves keep the
+// system monospace's flatter one.
+const glyphFont = new FontFace("JetBrains Mono", 'url("/fonts/jetbrains-mono-horizon.woff2")');
+self.fonts.add(glyphFont);
+let fontSettled = false;
+const settleFont = () => {
+  fontSettled = true;
+  render();
+};
+void glyphFont.load().then(settleFont, settleFont);
 
 function getWaterTime(now: number): number {
   if (state.reducedMotion) {
@@ -113,6 +135,11 @@ function resizeCanvas() {
   state.ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
   state.ctx.font = state.metrics.font;
   state.ctx.textBaseline = "top";
+}
+
+// Clouds move slowly; they are sampled at steps of scene time and held between frames.
+function cloudTime(waterTime: number): number {
+  return Math.floor(waterTime * 12) / 12;
 }
 
 let atmosphereTime = -Infinity;
@@ -189,13 +216,15 @@ function drawDots(
 
 function render() {
   if (
+    !fontSettled ||
     !state.ctx ||
     !state.config ||
     !state.metrics ||
     !state.palette ||
     !state.waveParams ||
     !state.skyParams ||
-    !state.weatherParams
+    !state.weatherParams ||
+    !state.drift
   ) {
     return;
   }
@@ -203,14 +232,14 @@ function render() {
   const waterTime = getWaterTime(performance.now());
   const now = Date.now();
   const world = computeWorldParams(now, waterTime, state.skyParams);
-  // Clouds move slowly; hold their samples between water frames.
-  const nextAtmosphereTime = Math.floor(waterTime * 12) / 12;
+  const nextAtmosphereTime = cloudTime(waterTime);
   if (nextAtmosphereTime !== atmosphereTime) {
     atmosphereTime = nextAtmosphereTime;
     atmosphereGrid = sampleAtmosphereGrid(
       state.config,
-      { ...world, waterTime: atmosphereTime },
+      atmosphereTime,
       state.weatherParams,
+      state.drift,
     );
   }
   const grid = generateHorizon(
@@ -285,6 +314,10 @@ function syncState(message: SyncMessage) {
   state.weatherParams = message.weatherParams;
   state.reducedMotion = message.reducedMotion;
   state.waterTime = state.reducedMotion ? 0 : currentWaterTime;
+  // A new wind turns the clouds from where they are drawn instead of jumping them.
+  state.drift = state.drift
+    ? steerDrift(state.drift, message.weatherParams, cloudTime(state.waterTime))
+    : startDrift(message.weatherParams, message.waveParams.speed);
 
   if (message.active && !state.reducedMotion) {
     const speed = Math.max(message.waveParams.speed, 0.001);

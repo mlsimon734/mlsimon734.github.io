@@ -50,50 +50,34 @@
 <style>
   .org-chip {
     --active-color: var(--chip-color);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.05rem 0.5rem 0.1rem 0.4rem;
-    margin: 0 0.05rem;
-    border-radius: 0.3rem;
-    background: color-mix(in srgb, var(--active-color) 9%, transparent);
-    border: 1px solid color-mix(in srgb, var(--active-color) 22%, transparent);
-    color: var(--active-color);
-    font-weight: 500;
-    text-decoration: none;
-    line-height: 1.35;
-    vertical-align: baseline;
     white-space: nowrap;
-    transition:
-      background-color 0.2s,
-      border-color 0.2s,
-      transform 0.2s;
+    color: var(--color-theme-heading);
+    text-decoration: none;
   }
 
   :global(html[data-theme="dark"]) .org-chip {
     --active-color: var(--chip-color-dark);
-    background: color-mix(in srgb, var(--active-color) 14%, transparent);
-    border-color: color-mix(in srgb, var(--active-color) 32%, transparent);
   }
 
-  .org-chip:hover {
-    background: color-mix(in srgb, var(--active-color) 16%, transparent);
-    border-color: color-mix(in srgb, var(--active-color) 36%, transparent);
-    transform: translateY(-1px);
+  .org-chip-name {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: color-mix(in srgb, var(--color-theme-accent) 55%, transparent);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 0.2s;
   }
 
-  :global(html[data-theme="dark"]) .org-chip:hover {
-    background: color-mix(in srgb, var(--active-color) 24%, transparent);
-    border-color: color-mix(in srgb, var(--active-color) 48%, transparent);
+  .org-chip:hover .org-chip-name {
+    text-decoration-color: var(--color-theme-accent);
   }
 
   .org-chip-logo {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
+    width: 0.875em;
+    height: 0.875em;
+    vertical-align: -0.075em;
   }
 
   .org-chip-logo :global(svg) {
@@ -106,9 +90,5 @@
     height: 100%;
     object-fit: contain;
     border-radius: 2px;
-  }
-
-  .org-chip-name {
-    font-size: 0.95em;
   }
 </style>

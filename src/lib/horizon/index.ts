@@ -306,7 +306,7 @@ export function generateHorizon(
   skyParams: SkyParams = DEFAULT_SKY_PARAMS,
   weatherParams: WeatherParams = DEFAULT_WEATHER_PARAMS,
   params = computeWorldParams(now, waterTime, skyParams),
-  atmosphereGrid = sampleAtmosphereGrid(config, params, weatherParams),
+  atmosphereGrid = sampleAtmosphereGrid(config, params.waterTime, weatherParams),
 ): AsciiCell[][] {
   const grid: Grid = Array.from({ length: config.height }, () =>
     Array.from({ length: config.width }, (): AsciiCell => ({ char: " ", zone: "sky" })),

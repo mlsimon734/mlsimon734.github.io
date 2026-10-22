@@ -16,7 +16,12 @@ interface SitemapPage {
 const PAGES: SitemapPage[] = [
   { path: "/", priority: "1.0", sources: ["src/routes/+page.svelte", "src/lib"] },
   { path: "/experience", priority: "0.8", sources: ["src/routes/experience"] },
-  { path: "/projects", priority: "0.8", sources: ["src/routes/projects"] },
+  { path: "/projects", priority: "0.8", sources: ["src/routes/projects/+page.svelte"] },
+  {
+    path: "/projects/last-light",
+    priority: "0.6",
+    sources: ["src/routes/projects/last-light", "src/lib/particles/vgpu"],
+  },
   { path: "/writing", priority: "0.6", sources: ["src/routes/writing"] },
 ];
 

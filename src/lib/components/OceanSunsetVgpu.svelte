@@ -215,7 +215,7 @@
     {#if failed}
       <div class="status" role="status">
         <p>This study needs WebGPU, which is unavailable here.</p>
-        <a href="/sketches/ocean-sunset/webgl" class="link">View the WebGL version</a>
+        <a href="/projects/last-light/webgl" class="link">View the WebGL version</a>
       </div>
     {:else if !renderer}
       <p class="status" role="status">Gathering the last light…</p>
@@ -293,8 +293,7 @@
     flex-wrap: wrap;
     gap: 0.15rem 1.6em;
     margin: 0;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: 0.8125rem;
     line-height: 1.6;
     color: var(--color-theme-subtle);
     font-variant-numeric: tabular-nums;

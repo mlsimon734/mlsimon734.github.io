@@ -93,8 +93,7 @@
     border: 1px solid var(--color-theme-border);
     border-radius: 8px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     color: var(--color-theme-text);
     z-index: 50;
     display: flex;
@@ -116,7 +115,7 @@
   }
 
   .key {
-    color: var(--color-sunset-amber-500);
+    color: var(--color-theme-subtle);
   }
 
   .quote {
@@ -125,7 +124,7 @@
     gap: 0.15rem;
     margin-top: 0.5rem;
     padding: 0.5rem 0 0;
-    border-top: 1px dotted var(--color-theme-divider);
+    border-top: 1px solid var(--color-theme-border);
     background: none;
     border-left: 0;
     border-right: 0;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { fade } from "svelte/transition";
   import {
     generateHorizon,
@@ -9,7 +10,7 @@
     type SkyParams,
     type WeatherParams,
   } from "#lib/horizon/index.js";
-  import { sampleAtmosphereGrid } from "#lib/horizon/atmosphere.js";
+  import { sampleAtmosphereGrid, startDrift, steerDrift } from "#lib/horizon/atmosphere.js";
   import { computeWorldParams } from "#lib/horizon/world.js";
   import { renderBackgroundPixels } from "#lib/horizon/background.js";
   import { horizonRow } from "#lib/horizon/frame.js";
@@ -55,7 +56,13 @@
   const config = $derived(isDesktop ? DESKTOP_CONFIG : MOBILE_CONFIG);
   const shouldAnimate = $derived(!paused && !reducedMotion && inViewport && pageVisible);
   const world = $derived(computeWorldParams(now, waterTime, skyParams));
-  const atmosphereGrid = $derived(sampleAtmosphereGrid(config, world, weatherParams));
+  let drift = $state.raw(untrack(() => startDrift(weatherParams, waveParams.speed)));
+  // A new wind turns the clouds from where they stand instead of jumping them.
+  $effect.pre(() => {
+    const wind = { ...weatherParams };
+    drift = untrack(() => steerDrift(drift, wind, waterTime));
+  });
+  const atmosphereGrid = $derived(sampleAtmosphereGrid(config, waterTime, weatherParams, drift));
   const grid = $derived(
     generateHorizon(
       now,

@@ -77,20 +77,15 @@
     gap: 0.35rem;
     color: var(--color-theme-muted);
     text-decoration: none;
-    transition:
-      color 0.2s,
-      transform 0.2s;
+    transition: color 0.2s;
   }
 
   .social-icon:hover {
-    color: var(--color-sunset-amber-500);
-    transform: translateY(-1px);
+    color: var(--color-theme-heading);
   }
 
   .social-icon.with-label {
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
-    letter-spacing: 0.04em;
+    font-size: 0.9375rem;
   }
 
   .cv-label {

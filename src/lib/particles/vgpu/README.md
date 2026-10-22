@@ -1,11 +1,11 @@
 # Last light: the WebGPU ocean
 
-The piece at `/sketches/ocean-sunset` renders Santa Monica Bay at the current minute as a dense
-cloud of grains, in the manner of
+The piece at `/projects/last-light` renders Santa Monica Bay at the current minute as a dense cloud
+of grains, in the manner of
 [cullenwebber/three-ml-sharp](https://github.com/cullenwebber/three-ml-sharp): every grain carries
 GPU state, lives about a second, swirls away on a flow field and reforms at home, so the scene reads
 as a single-image reconstruction that keeps pouring away and coming back. The earlier Three.js ocean
-remains at `/sketches/ocean-sunset/webgl` for browsers without WebGPU.
+remains at `/projects/last-light/webgl` for browsers without WebGPU.
 
 ## Inputs
 

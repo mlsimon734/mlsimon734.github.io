@@ -4,6 +4,18 @@
 
 Use `bun` — not `npm`. All commands: `bun run`, `bun install`, `bunx`, etc.
 
+## Dev Server
+
+`bun run dev` runs Vite through [portless](https://github.com/vercel-labs/portless), installed
+globally (`bun add -g portless`), so every checkout gets a stable HTTPS URL instead of a port:
+`https://mlsimon734-github-io.localhost` for the main checkout, and
+`https://<branch>.mlsimon734-github-io.localhost` for a worktree, named after the last segment of
+its branch. Parallel worktrees never fight over a port. `bunx vite dev` still serves without it.
+
+Agents: start the dev server with the sandbox off. Portless 0.15.8 counts any process it cannot
+signal as dead, and inside the sandbox that is every process outside it, so a sandboxed
+`bun run dev` deletes other checkouts' routes when it registers its own.
+
 ## Stack
 
 - SvelteKit 3 + Svelte 5 + Tailwind CSS 4 + TypeScript
