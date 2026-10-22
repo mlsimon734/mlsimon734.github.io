@@ -3,9 +3,12 @@
   let {
     paused = $bindable(false),
     reducedMotion = false,
+    subject = "ocean",
   }: {
     paused?: boolean;
     reducedMotion?: boolean;
+    /** What the button pauses, for its label. */
+    subject?: string;
   } = $props();
 </script>
 
@@ -15,7 +18,7 @@
   {:else}
     <button
       onclick={() => (paused = !paused)}
-      aria-label={paused ? "Play ocean animation" : "Pause ocean animation"}
+      aria-label={`${paused ? "Play" : "Pause"} ${subject} animation`}
     >
       {#if paused}<Play size={14} aria-hidden="true" />{:else}<Pause
           size={14}

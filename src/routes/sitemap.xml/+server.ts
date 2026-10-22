@@ -22,6 +22,11 @@ const PAGES: SitemapPage[] = [
     priority: "0.6",
     sources: ["src/routes/projects/last-light", "src/lib/particles/vgpu"],
   },
+  {
+    path: "/projects/floravenge",
+    priority: "0.6",
+    sources: ["src/routes/projects/floravenge", "src/lib/particles/forest"],
+  },
   { path: "/writing", priority: "0.6", sources: ["src/routes/writing"] },
 ];
 

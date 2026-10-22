@@ -1,4 +1,4 @@
-// Shared by the sky and field passes; imported by each at build time.
+// Shared by the sky and field passes, and by the forest's flow; imported by each at build time.
 export const PI = 3.14159265;
 export const KIND_SKY = 0.0;
 export const KIND_SUN = 1.0;
