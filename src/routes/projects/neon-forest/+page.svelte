@@ -5,7 +5,7 @@
 
 <Seo
   title="Neon Wood"
-  path="/sketches/neon-forest"
+  path="/projects/neon-forest"
   description="An overgrown alley at night, strung with lights, drawn as a million drifting points."
 />
 
