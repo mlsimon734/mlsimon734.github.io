@@ -40,8 +40,8 @@
       name: "Art",
       projects: [
         {
-          name: "Neon Wood",
-          href: "/projects/neon-forest",
+          name: "Floravenge",
+          href: "/projects/floravenge",
           desc: "An overgrown alley at night, strung with lights, as a million drifting grains: one generated image, given depth by MoGe-2, coming loose in slow swirls of curl noise.",
           stack: ["Svelte 5", "WebGPU", "WGSL", "vgpu", "MoGe-2"],
           period: "2026",

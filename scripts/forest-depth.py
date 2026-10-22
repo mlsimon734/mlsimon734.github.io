@@ -7,7 +7,7 @@
 #   "torch>=2.4",
 # ]
 # ///
-"""Turn one image into the neon forest's two assets: its colours and the depth of every pixel.
+"""Turn one image into Floravenge's two assets: its colours and the depth of every pixel.
 
 Usage: uv run scripts/forest-depth.py <image> [--width 1376]
 

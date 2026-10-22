@@ -4,13 +4,13 @@
 </script>
 
 <Seo
-  title="Neon Wood"
-  path="/projects/neon-forest"
+  title="Floravenge"
+  path="/projects/floravenge"
   description="An overgrown alley at night, strung with lights, drawn as a million drifting points."
 />
 
 <div class="layout-md text-lg">
-  <h1 class="heading2">neon wood</h1>
+  <h1 class="heading2">floravenge</h1>
   <p class="lede">
     An alley gone back to forest at night, strung with lights, with a door left open at the end.
   </p>
