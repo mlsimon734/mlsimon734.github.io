@@ -21,7 +21,7 @@
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tailwindcss/vite": "^4.0.0",
     "@types/node": "^26.0.0",
-    "@types/three": "^0.186.0",
+    "@types/three": "^0.187.0",
     "@typescript/native": "npm:typescript@^7.0.0",
     "mdsvex": "^0.12.8",
     "oxlint": "^1.63.0",
@@ -37,7 +37,7 @@
   "dependencies": {
     "@icons-pack/svelte-simple-icons": "^7.2.0",
     "@lucide/svelte": "^1.55.0",
-    "three": "^0.186.0",
+    "three": "^0.187.0",
     "vgpu": "0.6.0"
   },
   "imports": {
