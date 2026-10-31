@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Mail, GraduationCap, FileText } from "@lucide/svelte";
   import { SiGithub, SiX } from "@icons-pack/svelte-simple-icons";
+  import AiCv from "./AiCv.svelte";
   import SiLinkedin from "./SiLinkedin.svelte";
 
   let { showCvLabel = false, class: className = "" }: { showCvLabel?: boolean; class?: string } =
@@ -50,16 +51,26 @@
     </a>
   {/each}
   <a
+    href="/cv.pdf"
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="CV (PDF)"
+    title="CV (PDF)"
+    class="social-icon cv"
+    class:with-label={showCvLabel}
+  >
+    <AiCv size={18} />
+    {#if showCvLabel}<span class="cv-label">CV</span>{/if}
+  </a>
+  <a
     href="/resume.pdf"
     target="_blank"
     rel="noopener noreferrer"
     aria-label="Résumé (PDF)"
     title="Résumé (PDF)"
-    class="social-icon cv"
-    class:with-label={showCvLabel}
+    class="social-icon"
   >
     <FileText size={18} strokeWidth={1.6} />
-    {#if showCvLabel}<span class="cv-label">CV</span>{/if}
   </a>
 </div>
 

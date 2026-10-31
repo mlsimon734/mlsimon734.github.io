@@ -12,7 +12,8 @@
     "lint:fix": "oxlint --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "sync:resume": "bun scripts/sync-resume.ts"
+    "sync:resume": "bun scripts/sync-docs.ts resume",
+    "sync:cv": "bun scripts/sync-docs.ts cv"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^4.0.0",
